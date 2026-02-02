@@ -1,5 +1,4 @@
 "use client";
-
 import { EditorProvider, useEditor } from "@/hooks/use-editor";
 import { EditorLayout } from "@/components/editor/editor-layout";
 import { PreviewLayout } from "@/components/preview/preview-layout";

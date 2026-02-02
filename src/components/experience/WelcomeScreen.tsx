@@ -51,7 +51,7 @@ export function WelcomeScreen({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, duration: 0.4 }}
         onClick={onStart}
-        className="px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+        className="px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out transform-gpu will-change-transform shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
       >
         Start
       </motion.button>

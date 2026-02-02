@@ -633,6 +633,44 @@ export function PropertiesPanel() {
                             />
                         </Field>
 
+                        {selectedBlock.inputType === "slider" && (
+                            <div className="grid grid-cols-2 gap-3 mt-4">
+                                <Field label="Min Label">
+                                    <Input
+                                        placeholder="e.g. Low"
+                                        value={selectedBlock.options?.[0] || ""}
+                                        onChange={(e) => {
+                                            const currentOpts = selectedBlock!.options || [];
+                                            // Ensure we have at least 2 slots
+                                            const newOpts = [...currentOpts];
+                                            if (newOpts.length === 0) newOpts.push("");
+                                            if (newOpts.length === 1) newOpts.push("");
+                                            
+                                            newOpts[0] = e.target.value;
+                                            updateBlock(parentSectionId!, selectedBlock!.id, { options: newOpts });
+                                        }}
+                                    />
+                                </Field>
+                                <Field label="Max Label">
+                                    <Input
+                                        placeholder="e.g. High"
+                                        value={selectedBlock.options?.[1] || ""}
+                                        onChange={(e) => {
+                                            const currentOpts = selectedBlock!.options || [];
+                                            const newOpts = [...currentOpts];
+                                            if (newOpts.length === 0) newOpts.push("");
+                                            if (newOpts.length === 1) newOpts.push("");
+                                            
+                                            // If more than 2 (unlikely for slider), preserve them
+                                            // Usually slider options are [minLabel, maxLabel]
+                                            newOpts[newOpts.length - 1] = e.target.value;
+                                            updateBlock(parentSectionId!, selectedBlock!.id, { options: newOpts });
+                                        }}
+                                    />
+                                </Field>
+                            </div>
+                        )}
+
                          <div className="flex items-center gap-3 mt-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                             <Checkbox
                                 checked={selectedBlock.required || false}

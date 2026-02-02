@@ -11,6 +11,7 @@ const TOOLS = [
   { type: "question", inputType: "long", label: "Long Text" },
   { type: "question", inputType: "select", label: "Select Dropdown" },
   { type: "question", inputType: "multi", label: "Multi Select" },
+  { type: "question", inputType: "slider", label: "Range Slider" },
   { type: "question", inputType: "date", label: "Date Picker" },
   { type: "question", inputType: "file", label: "File Upload" },
   { type: "image_choice", label: "Image Choice" },

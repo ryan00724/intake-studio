@@ -42,6 +42,21 @@ export function EditorHeader() {
         <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
 
         <button
+          onClick={() => {
+            if (confirm("Are you sure you want to clear all content? This cannot be undone.")) {
+              // Reset to initial state logic could be added to useEditor, 
+              // but for now we'll just reload with cleared storage for a hard reset effect
+              localStorage.removeItem("intake-studio-state-v3");
+              window.location.reload();
+            }
+          }}
+          className="px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+          title="Clear all content"
+        >
+          Clear
+        </button>
+
+        <button
           onClick={handlePublish}
           className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95 shadow-sm"
         >

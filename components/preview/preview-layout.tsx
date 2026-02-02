@@ -57,7 +57,7 @@ export function PreviewLayout() {
       </header>
 
       {/* Preview Content */}
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-y-auto relative h-full">
         <ExperienceRenderer
             sections={sections}
             mode={mode}

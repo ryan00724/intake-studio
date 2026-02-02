@@ -82,8 +82,8 @@ export function QuestionBlockCard({ block }: QuestionBlockCardProps) {
             <div className="py-4 px-2">
                 <input type="range" className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-not-allowed dark:bg-zinc-700" disabled />
                 <div className="flex justify-between text-xs text-zinc-400 mt-2">
-                    <span>Min</span>
-                    <span>Max</span>
+                    <span>{block.options?.[0] || "Min"}</span>
+                    <span>{block.options?.[block.options.length - 1] || "Max"}</span>
                 </div>
             </div>
         );

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* Tailwind v4 gates hover styles behind @media(hover:hover) by default.
+   Chromium on some Windows touch/2-in-1 devices reports hover:none even with a mouse,
+   which breaks hover-based UI. Override to restore classic hover behavior. */
+@custom-variant hover (&:hover);
 
 :root {
   --background: #fafafa;

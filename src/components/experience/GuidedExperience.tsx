@@ -116,7 +116,7 @@ export function GuidedExperience({
 
   return (
     <div 
-        className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12" 
+        className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12 overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
         {activeBackground?.type === "image" && (
@@ -214,13 +214,13 @@ export function GuidedExperience({
                             <div className="flex items-center justify-between w-full mt-12 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                                 <button
                                 onClick={handleBack}
-                                className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-all duration-200 ease-in-out hover:scale-105 active:scale-95"
+                                className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-all duration-200 ease-in-out transform-gpu will-change-transform hover:scale-105 active:scale-95"
                                 >
                                 Back
                                 </button>
                                 <button
                                 onClick={handleNext}
-                                className="px-6 py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+                                className="px-6 py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg font-medium transition-all duration-200 ease-in-out transform-gpu will-change-transform shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
                                 style={theme?.accentColor ? { backgroundColor: theme.accentColor, color: "#fff" } : undefined}
                                 >
                                 {currentStep === totalSections - 1 ? "Complete" : "Continue"}
@@ -276,13 +276,10 @@ function BlockRenderer({
                             value={opt.id} 
                             className="peer sr-only" 
                         />
-                        <motion.div 
-                            whileHover={{ y: -4, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
-                            transition={{ duration: 0.2 }}
-                            className="rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden transition-colors duration-200 peer-checked:border-zinc-900 dark:peer-checked:border-zinc-100 peer-checked:ring-1 peer-checked:ring-zinc-900 dark:peer-checked:ring-zinc-100 group-hover:border-zinc-300 dark:group-hover:border-zinc-600 bg-white dark:bg-zinc-800 shadow-sm peer-checked:shadow-md peer-checked:-translate-y-1">
+                        <div className="rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden transition-all duration-200 transform-gpu will-change-transform peer-checked:border-zinc-900 dark:peer-checked:border-zinc-100 peer-checked:ring-1 peer-checked:ring-zinc-900 dark:peer-checked:ring-zinc-100 group-hover:border-zinc-300 dark:group-hover:border-zinc-600 group-hover:shadow-lg group-hover:-translate-y-1 bg-white dark:bg-zinc-800 shadow-sm peer-checked:shadow-md peer-checked:-translate-y-1">
                              <div className="aspect-square relative bg-zinc-100 dark:bg-zinc-900">
                                 {opt.imageUrl ? (
-                                    <img src={opt.imageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt={opt.label} />
+                                    <img src={opt.imageUrl} className="w-full h-full object-cover transition-transform duration-500 transform-gpu will-change-transform group-hover:scale-105" alt={opt.label} />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-zinc-400 text-sm">No Image</div>
                                 )}
@@ -293,7 +290,7 @@ function BlockRenderer({
                                     {opt.label}
                                 </div>
                              )}
-                        </motion.div>
+                        </div>
                         <div className="absolute top-3 right-3 opacity-0 peer-checked:opacity-100 transition-all duration-200 scale-90 peer-checked:scale-100">
                             <div className="w-6 h-6 bg-zinc-900 dark:bg-zinc-100 rounded-full flex items-center justify-center text-white dark:text-zinc-900 shadow-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -369,11 +366,19 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
       );
     case "slider":
       return (
-        <input
-          type="range"
-          className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700"
-          style={{ accentColor }}
-        />
+        <div className="space-y-2">
+            <input
+                type="range"
+                className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700"
+                style={{ accentColor }}
+            />
+            {options && options.length >= 2 && (
+                <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                    <span>{options[0]}</span>
+                    <span>{options[options.length - 1]}</span>
+                </div>
+            )}
+        </div>
       );
     case "date":
       return <input type="date" className={baseClasses} style={focusStyle} />;
