@@ -26,8 +26,8 @@ body {
 }
 
 /* Global theme transition */
-body, div, span, button, input, textarea, select, header, section, nav, a {
-  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+body {
+  transition-property: background-color, color;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
