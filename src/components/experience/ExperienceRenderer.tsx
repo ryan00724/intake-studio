@@ -1,5 +1,5 @@
 import React from "react";
-import { IntakeSection } from "@/types/editor";
+import { IntakeSection, IntakeTheme } from "@/types/editor";
 import { PersonalizationParams } from "@/src/lib/experience/personalize";
 import { GuidedExperience } from "./GuidedExperience";
 import { DocumentExperience } from "./DocumentExperience";

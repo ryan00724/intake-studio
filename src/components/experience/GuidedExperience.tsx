@@ -155,7 +155,7 @@ export function GuidedExperience({
                 </div>
             )}
 
-            {currentStep >= 0 && currentStep < totalSections && (
+            {currentStep >= 0 && currentStep < totalSections && currentSection && (
                 <>
                     {showSectionIntro ? (
                         <div className={commonProps.cardStyle}>

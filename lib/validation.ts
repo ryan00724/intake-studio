@@ -10,37 +10,56 @@ export function generateSchema(sections: IntakeSection[]) {
 
         let fieldSchema: z.ZodTypeAny;
 
-        switch (block.inputType) {
-            case "short":
-            case "long":
-            case "select":
-            case "date":
-            case "file":
+        if (block.type === "image_choice") {
+            if (block.multi) {
+                fieldSchema = z.array(z.string());
+                if (block.required) {
+                    fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).min(1, { message: `Select at least one option for ${block.label}` });
+                } else {
+                    fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).optional();
+                }
+            } else {
                 fieldSchema = z.string();
                 if (block.required) {
                     fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${block.label} is required` });
                 } else {
                     fieldSchema = (fieldSchema as z.ZodString).optional();
                 }
-                break;
-            case "multi": // Array of strings?
-                fieldSchema = z.array(z.string());
-                if (block.required) {
-                    fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).min(1, { message: `Select at least one option for ${block.label}` });
-                }
-                 else {
-                    fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).optional();
-                }
-                break;
-            case "slider":
-                // Assuming string or number, let's say number for now but input range returns string usually unless controlled
-                fieldSchema = z.coerce.number(); // force number
-                 if (block.required) {
-                    // 0 might be valid, so just check type
-                }
-                break;
-            default:
-                fieldSchema = z.any();
+            }
+        } else {
+            // It's a QuestionBlock
+            switch (block.inputType) {
+                case "short":
+                case "long":
+                case "select":
+                case "date":
+                case "file":
+                    fieldSchema = z.string();
+                    if (block.required) {
+                        fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${block.label} is required` });
+                    } else {
+                        fieldSchema = (fieldSchema as z.ZodString).optional();
+                    }
+                    break;
+                case "multi": // Array of strings?
+                    fieldSchema = z.array(z.string());
+                    if (block.required) {
+                        fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).min(1, { message: `Select at least one option for ${block.label}` });
+                    }
+                     else {
+                        fieldSchema = (fieldSchema as z.ZodArray<z.ZodString>).optional();
+                    }
+                    break;
+                case "slider":
+                    // Assuming string or number, let's say number for now but input range returns string usually unless controlled
+                    fieldSchema = z.coerce.number(); // force number
+                     if (block.required) {
+                        // 0 might be valid, so just check type
+                    }
+                    break;
+                default:
+                    fieldSchema = z.any();
+            }
         }
 
         schemaShape[block.id] = fieldSchema;

@@ -135,7 +135,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         if (sec.id !== sectionId) return sec;
         return {
           ...sec,
-          blocks: sec.blocks.map((b) => (b.id === blockId ? { ...b, ...updates } : b)),
+          blocks: sec.blocks.map((b) => (b.id === blockId ? { ...b, ...updates } as IntakeBlock : b)),
         };
       })
     );
