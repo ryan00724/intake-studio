@@ -183,6 +183,35 @@ export function PreviewBlock({
       );
   }
 
+  if (block.type === "image_moodboard" || block.type === "this_not_this") {
+      return (
+        <div className="space-y-3">
+            <div className="flex justify-between">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {replacePlaceholders(block.label, personalization)}
+                </label>
+            </div>
+            
+            {block.helperText && (
+                <p className="text-xs text-zinc-500 mb-2">
+                    {replacePlaceholders(block.helperText, personalization)}
+                </p>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                 {block.items.map(item => (
+                     <div key={item.id} className="rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-white dark:bg-zinc-800 shadow-sm">
+                          <div className="aspect-square relative bg-zinc-100 dark:bg-zinc-900">
+                             <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.caption || "Image"} />
+                          </div>
+                          {item.caption && <div className="p-2 text-xs text-center border-t border-zinc-100 dark:border-zinc-700 text-zinc-500">{item.caption}</div>}
+                     </div>
+                 ))}
+            </div>
+        </div>
+      );
+  }
+
   // Question Block
   return (
     <div className="space-y-1">
