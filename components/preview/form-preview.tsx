@@ -85,16 +85,94 @@ function PreviewBlock({
       );
   }
 
+  // Non-question blocks (visual tools)
+  if (block.type === "image_choice") {
+      return (
+          <div className="space-y-1">
+              <div className="flex justify-between">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {block.label} {block.required && <span className="text-red-500">*</span>}
+                  </label>
+              </div>
+
+              {block.helperText && <p className="text-xs text-zinc-500 mb-2">{block.helperText}</p>}
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {block.options.map((opt) => (
+                      <label key={opt.id} className="cursor-pointer relative group block">
+                          <input
+                              type={block.multi ? "checkbox" : "radio"}
+                              value={opt.id}
+                              {...register(block.id)}
+                              className="peer sr-only"
+                          />
+                          <div className="rounded-xl border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden transition-all duration-200 peer-checked:border-indigo-600 peer-checked:ring-2 peer-checked:ring-indigo-600/20 group-hover:border-zinc-300 dark:group-hover:border-zinc-600 bg-white dark:bg-zinc-800 shadow-sm peer-checked:shadow-md">
+                              <div className="aspect-square relative bg-zinc-100 dark:bg-zinc-900">
+                                  {opt.imageUrl ? (
+                                      <img src={opt.imageUrl} className="w-full h-full object-cover" alt={opt.label || "Option"} />
+                                  ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-zinc-400 text-xs">No Image</div>
+                                  )}
+                              </div>
+                              {opt.label && (
+                                  <div className="p-3 text-sm text-center font-medium border-t border-zinc-100 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300">
+                                      {opt.label}
+                                  </div>
+                              )}
+                          </div>
+                      </label>
+                  ))}
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+      );
+  }
+
+  if (block.type === "image_moodboard" || block.type === "this_not_this") {
+      return (
+          <div className="space-y-1">
+              <div className="flex justify-between">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      {block.label}
+                  </label>
+              </div>
+
+              {block.helperText && <p className="text-xs text-zinc-500 mb-2">{block.helperText}</p>}
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {block.items.map((item) => (
+                      <div
+                          key={item.id}
+                          className="rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-white dark:bg-zinc-800 shadow-sm"
+                      >
+                          <div className="aspect-square relative bg-zinc-100 dark:bg-zinc-900">
+                              <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.caption || "Image"} />
+                          </div>
+                          {item.caption && (
+                              <div className="p-2 text-xs text-center border-t border-zinc-100 dark:border-zinc-700 text-zinc-500">
+                                  {item.caption}
+                              </div>
+                          )}
+                      </div>
+                  ))}
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+      );
+  }
+
   // Question Block
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {block.label} {block.required && <span className="text-red-500">*</span>}
+            {block.type === "question" ? block.label : ""} {block.type === "question" && block.required && <span className="text-red-500">*</span>}
           </label>
       </div>
       
-      {block.helperText && <p className="text-xs text-zinc-500 mb-2">{block.helperText}</p>}
+      {block.type === "question" && block.helperText && <p className="text-xs text-zinc-500 mb-2">{block.helperText}</p>}
 
       {renderInput(block, register)}
       
