@@ -80,10 +80,12 @@ export interface IntakeTheme {
 export interface IntakeSectionStyle {
     color?: string;
     background?: {
-        type: "none" | "color" | "image";
+        type: "none" | "color" | "image" | "video";
         color?: string;
         imageUrl?: string;
+        videoUrl?: string;
         overlayOpacity?: number;
+        overlayColor?: string;
         blurPx?: number;
     };
 }
