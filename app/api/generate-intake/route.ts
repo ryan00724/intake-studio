@@ -24,34 +24,48 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey });
 
     const prompt = `
-      You are an expert form designer. Create a professional client intake form based on the following requirements.
-
+      You are an expert form designer creating a "Guided Experience" intake flow.
+      This intake will be presented as a sequence of sections (screens).
+      
       Business Description: ${description}
       Intake Type: ${type || "General Intake"}
 
-      Your goal is to generate a JSON object representing the structure of the intake form.
+      Your goal is to generate a JSON object representing the structure of this guided intake.
+      
+      CRITICAL DESIGN INSTRUCTION:
+      - Design this as a "Branch-Ready" flow.
+      - Include 1 conditional/alternative path based on a key decision.
+      - Do NOT create routing rules, edges, or connections. The user will connect nodes visually in the editor.
+      - Instead, create SECTIONS that imply the branching structure through their Titles and Context.
+
+      BRANCHING PATTERN TO USE:
+      1. Create a "Decision Section" early in the flow (Section 2 or 3).
+         - Must contain a single-choice question (inputType: 'select') that determines the path.
+         - Example: "How clear is your vision?" -> Options: ["Very clear", "I need inspiration"]
+      2. Create 2 alternative follow-up sections immediately after.
+         - Title them clearly to indicate their purpose (e.g. "Path A: Vision Details", "Path B: Exploration").
+         - Use a 'context' block at the start of these sections to explain who this section is for (e.g. "Since you have a clear vision, let's get specifics...").
       
       STRICT RULES:
       1. Output ONLY valid JSON.
       2. The JSON must strictly follow the schema defined below.
-      3. Create 3-6 distinct sections with clear titles.
-      4. Ensure every section has at least 2 blocks.
+      3. Create 4-6 distinct sections total.
+      4. Ensure every section has at least 1 context block + 1-3 interactive blocks.
       5. Use a mix of block types: 
-         - 'context' for instructions or section intros
-         - 'question' for user inputs (mix different inputTypes thoughtfully)
-         - 'image_choice' ONLY if visual preference is relevant (max 1-2 per form)
+         - 'context' for instructions or section intros (CRITICAL for flow context)
+         - 'question' for user inputs
+         - 'image_choice' for visual preference (good for "Exploration" paths)
+         - 'this_not_this' for sorting visual likes/dislikes (excellent for "Exploration" paths)
+         - 'image_moodboard' for curation (excellent for "Vision Details" paths)
       6. For 'question' blocks, select the most appropriate 'inputType':
-         - 'short' for names, emails, single lines
-         - 'long' for descriptions, feedback
-         - 'select' or 'multi' for distinct choices (MUST provide at least 2 options)
-         - 'slider' for range/scale questions (e.g. budget, priority). You MAY provide 2 options for Min/Max labels (e.g. ["Low", "High"]).
-         - 'date' for timelines
-         - 'file' for attachments
-      7. For 'image_choice' blocks:
-         - MUST include at least 2 options
-         - Use valid placeholder image URLs (e.g. "https://placehold.co/400?text=Option+1")
+         - 'short', 'long', 'date', 'file'
+         - 'select' or 'multi' (MUST provide at least 2 options)
+         - 'slider' (MAY provide 2 options for Min/Max labels e.g. ["Low", "High"])
+      7. For visual blocks (image_choice, this_not_this, image_moodboard):
+         - MUST include at least 2-4 items/options
+         - Use valid placeholder image URLs (e.g. "https://placehold.co/400?text=Style+1")
       8. Ensure all IDs are non-empty strings (generate random short strings like "sec_1", "blk_a").
-      9. Keep the tone professional, clear, and neutral. Avoid jargon unless implied by the description.
+      9. NO routing fields, NO edges keys. Purely linear JSON structure.
 
       SCHEMA STRUCTURE:
       {
@@ -79,7 +93,7 @@ export async function POST(req: NextRequest) {
                 "helperText": "Optional helper text",
                 "required": boolean,
                 "inputType": "short" | "long" | "select" | "multi" | "slider" | "date" | "file",
-                "options": ["Option 1", "Option 2"] // REQUIRED for select/multi, OPTIONAL for slider (min/max labels), FORBIDDEN otherwise
+                "options": ["Option 1", "Option 2"]
               },
               {
                 "type": "image_choice",
@@ -87,11 +101,23 @@ export async function POST(req: NextRequest) {
                 "label": "Label",
                 "multi": boolean,
                 "options": [
-                  {
-                    "id": "string",
-                    "imageUrl": "https://...",
-                    "label": "Option Label"
-                  }
+                  { "id": "string", "imageUrl": "https://...", "label": "Option Label" }
+                ]
+              },
+              {
+                "type": "image_moodboard",
+                "id": "string",
+                "label": "Moodboard",
+                "items": [
+                   { "id": "string", "imageUrl": "https://...", "caption": "Caption" }
+                ]
+              },
+              {
+                "type": "this_not_this",
+                "id": "string",
+                "label": "This / Not This",
+                "items": [
+                   { "id": "string", "imageUrl": "https://...", "caption": "Caption" }
                 ]
               }
             ]

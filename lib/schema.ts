@@ -10,7 +10,7 @@ export const inputTypeSchema = z.enum([
   "file",
 ]);
 
-export const blockTypeSchema = z.enum(["context", "question", "image_choice"]);
+export const blockTypeSchema = z.enum(["context", "question", "image_choice", "image_moodboard", "this_not_this"]);
 
 export const baseBlockSchema = z.object({
   id: z.string(),
@@ -66,10 +66,38 @@ export const imageChoiceBlockSchema = baseBlockSchema.extend({
   options: z.array(imageChoiceOptionSchema).min(2),
 });
 
+export const imageMoodboardItemSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string().url(),
+  caption: z.string().optional(),
+});
+
+export const imageMoodboardBlockSchema = baseBlockSchema.extend({
+  type: z.literal("image_moodboard"),
+  label: z.string(),
+  helperText: z.string().optional(),
+  items: z.array(imageMoodboardItemSchema),
+});
+
+export const thisNotThisItemSchema = z.object({
+  id: z.string(),
+  imageUrl: z.string().url(),
+  caption: z.string().optional(),
+});
+
+export const thisNotThisBlockSchema = baseBlockSchema.extend({
+  type: z.literal("this_not_this"),
+  label: z.string(),
+  helperText: z.string().optional(),
+  items: z.array(thisNotThisItemSchema),
+});
+
 export const intakeBlockSchema = z.discriminatedUnion("type", [
   contextBlockSchema,
   questionBlockSchema,
   imageChoiceBlockSchema,
+  imageMoodboardBlockSchema,
+  thisNotThisBlockSchema,
 ]);
 
 export const intakeSectionSchema = z.object({
@@ -82,10 +110,12 @@ export const intakeSectionSchema = z.object({
 export const intakeThemeSchema = z.object({
   accentColor: z.string().optional(),
   background: z.object({
-    type: z.enum(["none", "color", "image"]),
+    type: z.enum(["none", "color", "image", "video"]),
     color: z.string().optional(),
     imageUrl: z.string().optional(),
+    videoUrl: z.string().optional(),
     overlayOpacity: z.number().optional(),
+    overlayColor: z.string().optional(),
     blurPx: z.number().optional(),
   }).optional(),
 }).optional();

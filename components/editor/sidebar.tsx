@@ -1,36 +1,193 @@
 "use client";
 
-import { DraggableSidebarItem } from "./draggable-sidebar-item";
-import { BlockType, InputType } from "@/types/editor";
+import React, { useState } from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { Panel } from "@/src/components/ui/Panel";
+import { 
+  LayoutTemplate, 
+  Type, 
+  ListChecks, 
+  Grid,
+  Layers,
+  MousePointer2,
+  Image as ImageIcon,
+  Palette,
+  Split,
+  TextCursor,
+  AlignLeft,
+  Calendar,
+  SlidersHorizontal,
+  CheckSquare,
+  Upload
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BlockType, InputType } from "@/types/editor";
 
-const TOOLS = [
-  { type: "section", label: "New Section" },
-  { type: "context", label: "Context Block" },
-  { type: "question", inputType: "short", label: "Short Text" },
-  { type: "question", inputType: "long", label: "Long Text" },
-  { type: "question", inputType: "select", label: "Select Dropdown" },
-  { type: "question", inputType: "multi", label: "Multi Select" },
-  { type: "question", inputType: "slider", label: "Range Slider" },
-  { type: "question", inputType: "date", label: "Date Picker" },
-  { type: "question", inputType: "file", label: "File Upload" },
-  { type: "image_choice", label: "Image Choice" },
+// --- Configuration ---
+
+const CATEGORIES = [
+  { id: "structure", label: "Structure", icon: Layers },
+  { id: "text", label: "Text", icon: Type },
+  { id: "choices", label: "Choices", icon: ListChecks },
+  { id: "visual", label: "Visual", icon: Grid },
 ] as const;
 
-export function Sidebar() {
+type CategoryId = typeof CATEGORIES[number]["id"];
+
+interface ToolConfig {
+  type: "section" | BlockType;
+  inputType?: InputType;
+  label: string;
+  helperText?: string;
+  icon?: React.ElementType;
+}
+
+const TOOLS: Record<CategoryId, ToolConfig[]> = {
+  structure: [
+    { type: "section", label: "New Section", helperText: "Start a new page", icon: LayoutTemplate },
+    { type: "context", label: "Context Block", helperText: "Instructions or info", icon: AlignLeft },
+  ],
+  text: [
+    { type: "question", inputType: "short", label: "Short Text", helperText: "Single line input", icon: TextCursor },
+    { type: "question", inputType: "long", label: "Long Text", helperText: "Paragraph input", icon: AlignLeft },
+  ],
+  choices: [
+    { type: "question", inputType: "select", label: "Select Dropdown", helperText: "Single option menu", icon: MousePointer2 },
+    { type: "question", inputType: "multi", label: "Multi Select", helperText: "Choose multiple", icon: CheckSquare },
+    { type: "question", inputType: "slider", label: "Range Slider", helperText: "Numeric range", icon: SlidersHorizontal },
+    { type: "question", inputType: "date", label: "Date Picker", helperText: "Select a date", icon: Calendar },
+    { type: "question", inputType: "file", label: "File Upload", helperText: "Request documents", icon: Upload },
+  ],
+  visual: [
+    { type: "image_choice", label: "Image Choice", helperText: "Visual selection", icon: ImageIcon },
+    { type: "image_moodboard", label: "Moodboard", helperText: "Image curation", icon: Palette },
+    { type: "this_not_this", label: "This / Not This", helperText: "Visual sorting", icon: Split },
+  ],
+};
+
+// --- Components ---
+
+function ToolboxCard({ data }: { data: ToolConfig }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `sidebar-${data.type}-${data.inputType || 'generic'}`,
+    data: {
+      ...data,
+      isSidebar: true,
+    },
+  });
+
+  const Icon = data.icon || Grid;
+
   return (
-    <Panel className="w-64 flex flex-col h-full shadow-sm">
-      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/50">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Toolbox</h2>
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="outline-none touch-none"
+    >
+      <div 
+        className={`
+            group relative flex flex-col gap-2 p-3 rounded-xl border transition-all duration-200
+            bg-white dark:bg-zinc-800/40 
+            hover:bg-white dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-md hover:-translate-y-0.5
+            cursor-grab active:cursor-grabbing
+            ${isDragging ? 'opacity-50 ring-2 ring-zinc-500/20 border-zinc-500/30' : 'border-zinc-200 dark:border-zinc-800'}
+        `}
+      >
+        <div className="flex items-start justify-between">
+            <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 group-hover:text-zinc-900 group-hover:bg-zinc-100 dark:group-hover:text-zinc-100 dark:group-hover:bg-zinc-700 transition-colors">
+                <Icon className="w-5 h-5" />
+            </div>
+            {/* Drag Handle Indicator */}
+            <div className="opacity-0 group-hover:opacity-100 text-zinc-300 dark:text-zinc-600 transition-opacity">
+                <Grid className="w-3 h-3" />
+            </div>
+        </div>
+        
+        <div>
+            <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{data.label}</h3>
+            {data.helperText && (
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight mt-0.5 line-clamp-1">{data.helperText}</p>
+            )}
+        </div>
       </div>
-      <div className="p-4 flex-1 overflow-y-auto">
-        <div className="space-y-2">
-            {TOOLS.map((tool, i) => (
-                <DraggableSidebarItem 
-                    key={i} 
-                    data={tool as any}
-                />
-            ))}
+    </div>
+  );
+}
+
+function CategoryNav({ activeId, onSelect }: { activeId: CategoryId, onSelect: (id: CategoryId) => void }) {
+  return (
+    <div className="w-16 flex-shrink-0 flex flex-col items-center py-4 gap-2 border-r border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+        {CATEGORIES.map((cat) => {
+            const isActive = activeId === cat.id;
+            const Icon = cat.icon;
+            
+            return (
+                <button
+                    key={cat.id}
+                    onClick={() => onSelect(cat.id)}
+                    className="group relative flex flex-col items-center gap-1 p-2 w-full outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/20 rounded-lg"
+                >
+                    <div className={`
+                        p-2 rounded-xl transition-all duration-200
+                        ${isActive 
+                            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm' 
+                            : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}
+                    `}>
+                        <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={`text-[9px] font-medium tracking-wide uppercase transition-colors ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-600'}`}>
+                        {cat.label}
+                    </span>
+                </button>
+            )
+        })}
+    </div>
+  );
+}
+
+import { useEditor } from "@/hooks/use-editor";
+
+export function Sidebar() {
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("structure");
+  const { isToolboxOpen, setToolboxOpen } = useEditor();
+
+  return (
+    <Panel className={`flex h-full shadow-sm bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out ${isToolboxOpen ? 'w-64' : 'w-16'}`}>
+      {/* Left Column: Navigation */}
+      <CategoryNav 
+        activeId={activeCategory} 
+        onSelect={(id) => {
+            setActiveCategory(id);
+            setToolboxOpen(true);
+        }} 
+      />
+      
+      {/* Right Column: Catalog */}
+      <div className={`flex-1 flex flex-col h-full bg-white dark:bg-zinc-900 transition-opacity duration-200 ${isToolboxOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <span className="text-zinc-400 dark:text-zinc-500 font-normal">Toolbox /</span> 
+                {CATEGORIES.find(c => c.id === activeCategory)?.label}
+            </h2>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
+            <div className="grid grid-cols-1 gap-3">
+                <AnimatePresence mode="popLayout">
+                    {TOOLS[activeCategory].map((tool, i) => (
+                        <motion.div
+                            key={`${activeCategory}-${tool.type}-${tool.inputType || 'def'}`}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2, delay: i * 0.05 }}
+                        >
+                            <ToolboxCard data={tool} />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+            </div>
         </div>
       </div>
     </Panel>

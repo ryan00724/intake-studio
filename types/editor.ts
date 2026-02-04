@@ -1,10 +1,36 @@
 export type InputType = "short" | "long" | "select" | "multi" | "slider" | "date" | "file";
 
-export type BlockType = "context" | "question" | "image_choice";
+export type BlockType = "context" | "question" | "image_choice" | "image_moodboard" | "this_not_this";
 
 export interface BaseBlock {
   id: string;
   type: BlockType;
+}
+
+export interface ThisNotThisItem {
+  id: string;
+  imageUrl: string;
+  caption?: string;
+}
+
+export interface ThisNotThisBlock extends BaseBlock {
+  type: "this_not_this";
+  label: string;
+  helperText?: string;
+  items: ThisNotThisItem[];
+}
+
+export interface ImageMoodboardItem {
+  id: string;
+  imageUrl: string;
+  caption?: string;
+}
+
+export interface ImageMoodboardBlock extends BaseBlock {
+  type: "image_moodboard";
+  label: string;
+  helperText?: string;
+  items: ImageMoodboardItem[];
 }
 
 export interface ImageChoiceOption {
@@ -36,14 +62,15 @@ export interface QuestionBlock extends BaseBlock {
   options?: string[]; // For select/multi
 }
 
-export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock;
+export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | ImageMoodboardBlock | ThisNotThisBlock;
 
 export interface IntakeTheme {
     accentColor?: string;
     background?: {
-        type: "none" | "color" | "image";
+        type: "none" | "color" | "image" | "video";
         color?: string;
         imageUrl?: string;
+        videoUrl?: string;
         overlayOpacity?: number;
         overlayColor?: string;
         blurPx?: number;
@@ -61,12 +88,21 @@ export interface IntakeSectionStyle {
     };
 }
 
+export interface SectionRouteRule {
+    id: string;
+    fromBlockId: string;
+    operator: "equals"; // For now just equals
+    value: string;
+    nextSectionId: string;
+}
+
 export interface IntakeSection {
   id: string;
   title: string;
   description?: string;
   blocks: IntakeBlock[];
   style?: IntakeSectionStyle;
+  routing?: SectionRouteRule[];
 }
 
 export interface IntakeMetadata {

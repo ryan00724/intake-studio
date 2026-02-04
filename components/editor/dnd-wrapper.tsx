@@ -114,7 +114,7 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
             label: activeData.section.title,
             data: activeData.section
         });
-    } else if (activeData?.type === "block") {
+    } else if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context") {
         setActiveDragItem({
             type: activeData.block.type,
             label: activeData.block.label || "Block",
@@ -171,6 +171,7 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
              }
 
              if (targetSectionId) {
+                 console.log("Dropping block:", activeData); // Debug log
                  let newBlock: IntakeBlock;
                  
                  if (activeData.type === "context") {
@@ -182,6 +183,20 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
                         label: activeData.label,
                         options: [],
                         multi: false
+                    };
+                 } else if (activeData.type === "image_moodboard") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "image_moodboard",
+                        label: activeData.label,
+                        items: [],
+                    };
+                 } else if (activeData.type === "this_not_this") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "this_not_this",
+                        label: activeData.label,
+                        items: [],
                     };
                  } else {
                     newBlock = { 
@@ -227,8 +242,7 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
         return;
     }
 
-    // 2B: Reordering/Moving Blocks
-    if (activeData?.type === "block") {
+    if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context") {
         const activeSectionId = findSectionContainer(active.id as string);
         let overSectionId = findSectionContainer(over.id as string);
         

@@ -5,9 +5,10 @@ import { PropertiesPanel } from "./properties-panel";
 import { DndWrapper } from "./dnd-wrapper";
 import { Canvas } from "./canvas";
 import { useEditor } from "@/hooks/use-editor";
+import { CanvasViewport } from "./canvas-viewport";
 
 export function EditorLayout() {
-  const { selectItem } = useEditor();
+  const { selectItem, setToolboxOpen } = useEditor();
 
   return (
     <DndWrapper>
@@ -16,11 +17,13 @@ export function EditorLayout() {
             
             <div 
                 className="flex-1 flex flex-col h-full relative overflow-hidden rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800/50 shadow-inner"
-                onClick={() => selectItem(null)}
             >
-                <div className="flex-1 overflow-y-auto p-8 flex justify-center">
+                <CanvasViewport onBackgroundClick={() => {
+                    selectItem(null);
+                    setToolboxOpen(false);
+                }}>
                     <Canvas />
-                </div>
+                </CanvasViewport>
             </div>
             
             <PropertiesPanel />

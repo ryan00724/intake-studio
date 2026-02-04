@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { IntakeSection, IntakeBlock, InputType, IntakeTheme } from "@/types/editor";
 import { personalizeText, PersonalizationParams } from "@/src/lib/experience/personalize";
+import { Moodboard } from "@/src/components/shared/Moodboard";
+import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
 
 interface DocumentExperienceProps {
   sections: IntakeSection[];
@@ -25,6 +27,8 @@ export function DocumentExperience({
     bgStyle.backgroundSize = "cover";
     bgStyle.backgroundPosition = "center";
     bgStyle.backgroundAttachment = "fixed";
+  } else if (theme?.background?.type === "video") {
+    // Video handled via element
   }
 
   const containerStyle: React.CSSProperties = {};
@@ -38,6 +42,19 @@ export function DocumentExperience({
         className="min-h-screen transition-colors duration-300 relative overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
+        {theme?.background?.type === "video" && theme.background.videoUrl && theme.background.videoUrl.endsWith(".mp4") && (
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover z-0"
+            >
+                <source src={theme.background.videoUrl} type="video/mp4" />
+            </video>
+        )}
+        
         {theme?.background?.type === "image" && theme.background.imageUrl && (
             <div 
                 className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-0" 
@@ -50,10 +67,11 @@ export function DocumentExperience({
                 }} 
             />
         )}
-        {theme?.background?.type === "image" && (
+        {(theme?.background?.type === "image" || theme?.background?.type === "video") && (
             <div 
-                className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300 z-0" 
+                className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-0" 
                 style={{ 
+                    backgroundColor: theme.background.overlayColor || "#000000",
                     opacity: theme.background.overlayOpacity ?? 0.55
                 }} 
             />
@@ -181,6 +199,69 @@ function BlockRenderer({
         </div>
       );
   }
+
+  if (block.type === "image_moodboard") {
+    const label = personalizeText(block.label, personalization);
+    const helperText = personalizeText(block.helperText, personalization);
+    const [items, setItems] = useState(block.items);
+
+    return (
+        <div className="space-y-4">
+             <div className="space-y-1">
+                <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
+                    {label}
+                </label>
+                {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
+            </div>
+            
+            <Moodboard 
+                items={items} 
+                onReorder={setItems} 
+                // No onRemove in preview mode usually, unless client can remove items? 
+                // User said: "Allow removing images (small × button on hover)" in Editor.
+                // "Published / Preview: Same UI as canvas, but interactive for the client".
+                // "Client can reorder images freely". Doesn't explicitly say remove.
+                // I'll leave remove out for preview/published for now to be safe, or maybe include it if "workshop-like" implies selection by elimination.
+                // "Allow removing images" was listed under "Editor (Canvas)". 
+                // For Preview, it says "Same UI as canvas", which implies removing might be possible?
+                // But usually moodboards are about ranking. I'll enable removing for now as it's "Same UI".
+                onRemove={(id) => setItems(items.filter(i => i.id !== id))}
+            />
+        </div>
+    );
+  }
+
+  if (block.type === "this_not_this") {
+    const label = personalizeText(block.label, personalization);
+    const helperText = personalizeText(block.helperText, personalization);
+    
+    // In a real app, this state would need to be lifted up to capture responses
+    // For now, it's local state per block instance in the view
+    const [yesItems, setYesItems] = useState<string[]>([]);
+    const [noItems, setNoItems] = useState<string[]>([]);
+
+    return (
+        <div className="space-y-4">
+             <div className="space-y-1">
+                <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
+                    {label}
+                </label>
+                {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
+            </div>
+            
+            <ThisNotThisBoard 
+                items={block.items} 
+                yesItems={yesItems}
+                noItems={noItems}
+                onUpdate={(yes, no) => {
+                    setYesItems(yes);
+                    setNoItems(no);
+                }}
+            />
+        </div>
+    );
+  }
+
   const label = personalizeText(block.label, personalization);
   const helperText = personalizeText(block.helperText, personalization);
 

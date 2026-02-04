@@ -5,6 +5,8 @@ import { personalizeText, PersonalizationParams } from "@/src/lib/experience/per
 import { WelcomeScreen } from "./WelcomeScreen";
 import { CompletionScreen } from "./CompletionScreen";
 import { SectionIntro } from "./SectionIntro";
+import { Moodboard } from "@/src/components/shared/Moodboard";
+import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
 
 interface GuidedExperienceProps {
   sections: IntakeSection[];
@@ -34,6 +36,10 @@ export function GuidedExperience({
   // Steps: -1 (Welcome) -> 0..N-1 (Sections) -> N (Completion)
   const [currentStep, setCurrentStep] = useState(-1);
   const [showSectionIntro, setShowSectionIntro] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  // Track history of Section IDs for "Back" button
+  const [history, setHistory] = useState<string[]>([]);
+
   const totalSections = sections.length;
 
   const currentSection =
@@ -65,16 +71,51 @@ export function GuidedExperience({
 
   const handleStart = () => {
     setCurrentStep(0);
+    setHistory([]);
     // Show intro for first section if it has a description
     if (sections[0]?.description) {
         setShowSectionIntro(true);
     }
   };
 
+  const handleAnswerChange = (blockId: string, value: any) => {
+      setAnswers(prev => ({ ...prev, [blockId]: value }));
+  };
+
   const handleNext = () => {
+    if (!currentSection) return;
+
+    // 1. Check Routing
+    if (currentSection.routing && currentSection.routing.length > 0) {
+        for (const rule of currentSection.routing) {
+            const answer = answers[rule.fromBlockId];
+            if (rule.operator === "equals" && answer === rule.value) {
+                const nextIndex = sections.findIndex(s => s.id === rule.nextSectionId);
+                const nextSectionId = rule.nextSectionId;
+                
+                // Prevent loops: fallback if next section is already in history
+                if (nextIndex !== -1 && !history.includes(nextSectionId) && currentSection.id !== nextSectionId) {
+                    setHistory(prev => [...prev, currentSection.id]);
+                    setCurrentStep(nextIndex);
+                    
+                    if (sections[nextIndex]?.description) {
+                        setShowSectionIntro(true);
+                    } else {
+                        setShowSectionIntro(false);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    // 2. Default Linear Progression
     const nextStep = currentStep + 1;
     if (nextStep < totalSections) {
         // Moving to next section
+        if (currentSection) {
+            setHistory(prev => [...prev, currentSection.id]);
+        }
         setCurrentStep(nextStep);
         if (sections[nextStep]?.description) {
             setShowSectionIntro(true);
@@ -83,6 +124,9 @@ export function GuidedExperience({
         }
     } else {
         // Moving to completion
+        if (currentSection) {
+            setHistory(prev => [...prev, currentSection.id]);
+        }
         setCurrentStep(nextStep);
     }
   };
@@ -90,20 +134,44 @@ export function GuidedExperience({
   const handleBack = () => {
     if (showSectionIntro) {
         // If on intro screen, go back to previous section questions (or welcome)
-        const prevStep = currentStep - 1;
-        setCurrentStep(prevStep);
-        setShowSectionIntro(false); // Don't show intro when going back
+        // If history is empty, we are at start
+        if (currentStep === 0 || history.length === 0) {
+             setCurrentStep(-1);
+             return;
+        }
+        
+        // Pop last history ID
+        const prevSectionId = history[history.length - 1];
+        const prevIndex = sections.findIndex(s => s.id === prevSectionId);
+        
+        if (prevIndex !== -1) {
+            setHistory(prev => prev.slice(0, -1)); // Pop
+            setCurrentStep(prevIndex);
+            setShowSectionIntro(false); // Don't show intro when going back
+        } else {
+            // Fallback to linear prev if ID not found (unlikely)
+            setCurrentStep(Math.max(-1, currentStep - 1));
+        }
     } else {
-        // If on questions screen, check if we should show intro for THIS section (if we went back to it?)
-        // Actually, "Back" usually implies going to the previous logical state.
-        // If current section has intro, Back could go to Intro.
         if (sections[currentStep]?.description) {
             setShowSectionIntro(true);
         } else {
-            // Go to previous section
-            const prevStep = currentStep - 1;
-            setCurrentStep(prevStep);
-            setShowSectionIntro(false);
+            // Go to previous section from history
+            if (currentStep === 0 || history.length === 0) {
+                setCurrentStep(-1);
+                return;
+            }
+
+            const prevSectionId = history[history.length - 1];
+            const prevIndex = sections.findIndex(s => s.id === prevSectionId);
+
+            if (prevIndex !== -1) {
+                setHistory(prev => prev.slice(0, -1)); // Pop
+                setCurrentStep(prevIndex);
+                setShowSectionIntro(false);
+            } else {
+                setCurrentStep(Math.max(-1, currentStep - 1));
+            }
         }
     }
   };
@@ -119,12 +187,37 @@ export function GuidedExperience({
         className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12 overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
+        {activeBackground?.type === "video" && activeBackground.videoUrl && activeBackground.videoUrl.endsWith(".mp4") && (
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                className="absolute inset-0 w-full h-full object-cover z-0"
+            >
+                <source src={activeBackground.videoUrl} type="video/mp4" />
+            </video>
+        )}
+
         {activeBackground?.type === "image" && (
             <div 
-                className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300" 
+                className="absolute inset-0 pointer-events-none transition-opacity duration-300" 
                 style={{ 
-                    opacity: activeBackground.overlayOpacity ?? 0.55, 
+                    backgroundImage: `url(${activeBackground.imageUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
                     backdropFilter: activeBackground.blurPx ? `blur(${activeBackground.blurPx}px)` : undefined 
+                }} 
+            />
+        )}
+        
+        {(activeBackground?.type === "image" || activeBackground?.type === "video") && (
+            <div 
+                className="absolute inset-0 pointer-events-none transition-opacity duration-300" 
+                style={{ 
+                    backgroundColor: activeBackground.overlayColor || "#000000",
+                    opacity: activeBackground.overlayOpacity ?? 0.55, 
                 }} 
             />
         )}
@@ -204,6 +297,8 @@ export function GuidedExperience({
                                         block={block}
                                         personalization={personalization}
                                         accentColor={currentSection.style?.color || theme?.accentColor}
+                                        value={answers[block.id]}
+                                        onChange={(val) => handleAnswerChange(block.id, val)}
                                     />
                                     ))}
                                 </div>
@@ -240,10 +335,14 @@ function BlockRenderer({
   block,
   personalization,
   accentColor,
+  value,
+  onChange,
 }: {
   block: IntakeBlock;
   personalization?: PersonalizationParams;
   accentColor?: string;
+  value?: any;
+  onChange?: (value: any) => void;
 }) {
   if (block.type === "context") {
     return (
@@ -257,6 +356,20 @@ function BlockRenderer({
       const label = personalizeText(block.label, personalization);
       const helperText = personalizeText(block.helperText, personalization);
       
+      const handleChange = (optionId: string) => {
+          if (!onChange) return;
+          if (block.multi) {
+              const current = Array.isArray(value) ? value : [];
+              if (current.includes(optionId)) {
+                  onChange(current.filter((id: string) => id !== optionId));
+              } else {
+                  onChange([...current, optionId]);
+              }
+          } else {
+              onChange(optionId);
+          }
+      };
+
       return (
         <div className="space-y-4">
             <div className="space-y-1">
@@ -268,12 +381,17 @@ function BlockRenderer({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                 {block.options.map(opt => (
+                 {block.options.map(opt => {
+                     const isChecked = block.multi ? (Array.isArray(value) && value.includes(opt.id)) : value === opt.id;
+                     
+                     return (
                      <label key={opt.id} className="cursor-pointer relative group block">
                         <input 
                             type={block.multi ? "checkbox" : "radio"} 
                             name={block.id}
                             value={opt.id} 
+                            checked={isChecked}
+                            onChange={() => handleChange(opt.id)}
                             className="peer sr-only" 
                         />
                         <div className="rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden transition-all duration-200 transform-gpu will-change-transform peer-checked:border-zinc-900 dark:peer-checked:border-zinc-100 peer-checked:ring-1 peer-checked:ring-zinc-900 dark:peer-checked:ring-zinc-100 group-hover:border-zinc-300 dark:group-hover:border-zinc-600 group-hover:shadow-lg group-hover:-translate-y-1 bg-white dark:bg-zinc-800 shadow-sm peer-checked:shadow-md peer-checked:-translate-y-1">
@@ -297,10 +415,64 @@ function BlockRenderer({
                             </div>
                         </div>
                      </label>
-                 ))}
+                 )})}
             </div>
         </div>
       );
+  }
+
+  if (block.type === "image_moodboard") {
+    const label = personalizeText(block.label, personalization);
+    const helperText = personalizeText(block.helperText, personalization);
+    // Use controlled state if possible, otherwise local (Moodboard component needs update to support controlled prop fully if needed, but onReorder works)
+    // For now we map local state to onChange
+    
+    return (
+        <div className="space-y-4">
+             <div className="space-y-1">
+                <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
+                    {label}
+                </label>
+                {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
+            </div>
+            
+            <Moodboard 
+                items={value || block.items} 
+                onReorder={(newItems) => onChange?.(newItems)}
+                onRemove={(id) => {
+                    const currentItems = value || block.items;
+                    onChange?.(currentItems.filter((i: any) => i.id !== id));
+                }}
+            />
+        </div>
+    );
+  }
+
+  if (block.type === "this_not_this") {
+    const label = personalizeText(block.label, personalization);
+    const helperText = personalizeText(block.helperText, personalization);
+    
+    // Controlled state: value = { yes: [], no: [] }
+    const yesItems = value?.yes || [];
+    const noItems = value?.no || [];
+
+    return (
+        <div className="space-y-4">
+             <div className="space-y-1">
+                <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
+                    {label}
+                </label>
+                {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
+            </div>
+            
+            <ThisNotThisBoard 
+                items={block.items} 
+                yesItems={yesItems}
+                noItems={noItems}
+                onUpdate={(yes, no) => onChange?.({ yes, no })}
+            />
+        </div>
+    );
   }
 
   const label = personalizeText(block.label, personalization);
@@ -324,12 +496,30 @@ function BlockRenderer({
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{helperText}</p>
       )}
 
-      <InputRenderer type={block.inputType} options={block.options} accentColor={accentColor} />
+      <InputRenderer 
+        type={block.inputType} 
+        options={block.options} 
+        accentColor={accentColor} 
+        value={value}
+        onChange={onChange}
+      />
     </div>
   );
 }
 
-function InputRenderer({ type, options, accentColor }: { type: InputType; options?: string[]; accentColor?: string }) {
+function InputRenderer({ 
+    type, 
+    options, 
+    accentColor, 
+    value, 
+    onChange 
+}: { 
+    type: InputType; 
+    options?: string[]; 
+    accentColor?: string;
+    value?: any;
+    onChange?: (val: any) => void;
+}) {
   const baseClasses =
     "w-full rounded-md border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 outline-none transition-all py-2 px-3 text-zinc-900 dark:text-zinc-100";
   
@@ -337,10 +527,23 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
 
   switch (type) {
     case "long":
-      return <textarea className={`${baseClasses} min-h-[100px]`} rows={4} style={focusStyle} />;
+      return (
+        <textarea 
+            className={`${baseClasses} min-h-[100px]`} 
+            rows={4} 
+            style={focusStyle} 
+            value={value || ""}
+            onChange={(e) => onChange?.(e.target.value)}
+        />
+      );
     case "select":
       return (
-        <select className={baseClasses} style={focusStyle}>
+        <select 
+            className={baseClasses} 
+            style={focusStyle}
+            value={value || ""}
+            onChange={(e) => onChange?.(e.target.value)}
+        >
           <option value="">Select an option...</option>
           {options?.map((opt) => (
             <option key={opt} value={opt}>
@@ -358,6 +561,15 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
                 type="checkbox"
                 className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
                 style={{ accentColor }}
+                checked={Array.isArray(value) && value.includes(opt)}
+                onChange={(e) => {
+                    const current = Array.isArray(value) ? value : [];
+                    if (e.target.checked) {
+                        onChange?.([...current, opt]);
+                    } else {
+                        onChange?.(current.filter((v: string) => v !== opt));
+                    }
+                }}
               />
               <span className="text-sm text-zinc-700 dark:text-zinc-300">{opt}</span>
             </label>
@@ -371,6 +583,8 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
                 type="range"
                 className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700"
                 style={{ accentColor }}
+                value={value || 50}
+                onChange={(e) => onChange?.(e.target.value)}
             />
             {options && options.length >= 2 && (
                 <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
@@ -381,7 +595,15 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
         </div>
       );
     case "date":
-      return <input type="date" className={baseClasses} style={focusStyle} />;
+      return (
+        <input 
+            type="date" 
+            className={baseClasses} 
+            style={focusStyle} 
+            value={value || ""}
+            onChange={(e) => onChange?.(e.target.value)}
+        />
+      );
     case "file":
       return (
         <div className="flex items-center justify-center w-full">
@@ -391,12 +613,20 @@ function InputRenderer({ type, options, accentColor }: { type: InputType; option
                 <span className="font-semibold">Click to upload</span> or drag and drop
               </p>
             </div>
-            <input type="file" className="hidden" />
+            <input type="file" className="hidden" onChange={() => onChange?.("file-uploaded-mock")} />
           </label>
         </div>
       );
     case "short":
     default:
-      return <input type="text" className={baseClasses} style={focusStyle} />;
+      return (
+        <input 
+            type="text" 
+            className={baseClasses} 
+            style={focusStyle} 
+            value={value || ""}
+            onChange={(e) => onChange?.(e.target.value)}
+        />
+      );
   }
 }

@@ -45,8 +45,9 @@ export function SortableSection({ section }: { section: IntakeSection }) {
     <div
       ref={setNodeRef}
       style={style}
+      data-section-id={section.id} // Added identifier for connecting lines
       className={`
-        relative mb-6 transition-all duration-200 ease-out outline-none
+        relative mb-6 transition-all duration-200 ease-out outline-none flex-shrink-0
         ${isDragging ? "opacity-50 z-40 scale-[1.01]" : ""}
       `}
     >

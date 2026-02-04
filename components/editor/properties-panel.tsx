@@ -41,6 +41,8 @@ export function PropertiesPanel() {
   } = useEditor();
   
   const [copied, setCopied] = useState(false);
+  const [newMoodboardImageUrl, setNewMoodboardImageUrl] = useState("");
+  const [newThisNotThisImageUrl, setNewThisNotThisImageUrl] = useState("");
 
   // Find selection
   let selectedSection: IntakeSection | undefined;
@@ -203,9 +205,72 @@ export function PropertiesPanel() {
                             { label: "None (Default)", value: "none" },
                             { label: "Solid Color", value: "color" },
                             { label: "Image", value: "image" },
+                            { label: "Video", value: "video" },
                         ]}
                     />
                 </Field>
+
+                {metadata.theme?.background?.type === "video" && (
+                    <div className="space-y-4">
+                        <Field label="Video URL (MP4)" hint="Paste a direct .mp4 link. YouTube/Vimeo not supported.">
+                            <Input
+                                value={metadata.theme.background.videoUrl || ""}
+                                onChange={(e) => updateMetadata({
+                                    theme: {
+                                        ...metadata.theme,
+                                        background: { ...metadata.theme?.background, type: "video", videoUrl: e.target.value }
+                                    }
+                                })}
+                                placeholder="https://example.com/video.mp4"
+                            />
+                            {metadata.theme.background.videoUrl && !metadata.theme.background.videoUrl.endsWith(".mp4") && (
+                                <p className="text-xs text-red-500 mt-1">URL must end with .mp4</p>
+                            )}
+                        </Field>
+
+                        <Field label="Overlay Color">
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={metadata.theme?.background?.overlayColor || "#000000"}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                                <Input
+                                    value={metadata.theme?.background?.overlayColor || ""}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
+                                        }
+                                    })}
+                                    placeholder="#000000"
+                                    className="flex-1"
+                                />
+                            </div>
+                        </Field>
+
+                        <Field label="Overlay Opacity">
+                            <input
+                                type="range"
+                                min="0" max="1" step="0.05"
+                                value={metadata.theme?.background?.overlayOpacity ?? 0.55}
+                                onChange={(e) => updateMetadata({
+                                    theme: {
+                                        ...metadata.theme,
+                                        background: { ...metadata.theme?.background, type: "video", overlayOpacity: parseFloat(e.target.value) }
+                                    }
+                                })}
+                                className="w-full accent-blue-600"
+                            />
+                        </Field>
+                    </div>
+                )}
 
                 {metadata.theme?.background?.type === "color" && (
                     <Field label="Background Color">
@@ -421,6 +486,117 @@ export function PropertiesPanel() {
                         rows={3}
                     />
                 </Field>
+
+                {/* --- ROUTING --- */}
+                <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50 space-y-4">
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                        Logic & Routing
+                        <span className="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 text-[10px] px-1.5 py-0.5 rounded font-bold">BETA</span>
+                    </h3>
+                    
+                    {(() => {
+                        // Find eligible trigger questions (Select type only for MVP)
+                        const eligibleQuestions = selectedSection.blocks.filter(
+                            b => b.type === "question" && b.inputType === "select"
+                        );
+
+                        if (eligibleQuestions.length === 0) {
+                            return (
+                                <p className="text-xs text-zinc-400 italic">
+                                    Add a "Select Dropdown" question to this section to configure conditional routing.
+                                </p>
+                            );
+                        }
+
+                        const rules = selectedSection.routing || [];
+                        const otherSections = sections.filter(s => s.id !== selectedSection!.id);
+
+                        return (
+                            <div className="space-y-3">
+                                {rules.map((rule, idx) => {
+                                    const triggerBlock = eligibleQuestions.find(b => b.id === rule.fromBlockId);
+                                    // @ts-ignore - options exists on QuestionBlock
+                                    const options = triggerBlock?.options || [];
+
+                                    return (
+                                        <div key={rule.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-3 relative group">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                className="absolute top-2 right-2 h-6 w-6 p-0 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                    const newRules = rules.filter(r => r.id !== rule.id);
+                                                    updateSection(selectedSection!.id, { routing: newRules });
+                                                }}
+                                            >
+                                                ✕
+                                            </Button>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                                <Select
+                                                    value={rule.fromBlockId}
+                                                    onChange={(val) => {
+                                                        const newRules = [...rules];
+                                                        newRules[idx] = { ...rule, fromBlockId: val, value: "" }; // Reset value on change
+                                                        updateSection(selectedSection!.id, { routing: newRules });
+                                                    }}
+                                                    options={eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-medium text-zinc-400">Is</span>
+                                                <div className="flex-1">
+                                                    <Select
+                                                        value={rule.value}
+                                                        onChange={(val) => {
+                                                            const newRules = [...rules];
+                                                            newRules[idx] = { ...rule, value: val };
+                                                            updateSection(selectedSection!.id, { routing: newRules });
+                                                        }}
+                                                        options={options.map(opt => ({ label: opt, value: opt }))}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-medium text-zinc-500 uppercase">Go To Section:</label>
+                                                <Select
+                                                    value={rule.nextSectionId}
+                                                    onChange={(val) => {
+                                                        const newRules = [...rules];
+                                                        newRules[idx] = { ...rule, nextSectionId: val };
+                                                        updateSection(selectedSection!.id, { routing: newRules });
+                                                    }}
+                                                    options={otherSections.map(s => ({ label: s.title || "Untitled Section", value: s.id }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                <Button
+                                    variant="secondary"
+                                    className="w-full text-xs"
+                                    onClick={() => {
+                                        const newRule = {
+                                            id: generateId(),
+                                            fromBlockId: eligibleQuestions[0].id,
+                                            operator: "equals" as const,
+                                            value: "",
+                                            nextSectionId: otherSections[0]?.id || ""
+                                        };
+                                        updateSection(selectedSection!.id, { routing: [...rules, newRule] });
+                                    }}
+                                    disabled={otherSections.length === 0}
+                                >
+                                    + Add Routing Rule
+                                </Button>
+                            </div>
+                        );
+                    })()}
+                </div>
                 
                 <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50 space-y-6">
                     <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Section Theme Override</h3>
@@ -772,6 +948,170 @@ export function PropertiesPanel() {
                             >
                                 Add Option
                             </Button>
+                        </div>
+                    </>
+                )}
+
+                {/* Moodboard Block */}
+                {selectedBlock.type === "image_moodboard" && (
+                    <>
+                        <Field label="Label">
+                            <Input
+                                value={selectedBlock.label}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { label: e.target.value })}
+                            />
+                        </Field>
+                        <Field label="Helper Text">
+                            <Input
+                                value={selectedBlock.helperText || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { helperText: e.target.value })}
+                            />
+                        </Field>
+
+                        <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50 space-y-4">
+                            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Moodboard Images</h3>
+                            
+                            <div className="flex gap-2">
+                                <Input 
+                                    placeholder="Image URL" 
+                                    value={newMoodboardImageUrl}
+                                    onChange={(e) => setNewMoodboardImageUrl(e.target.value)}
+                                />
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        if (newMoodboardImageUrl) {
+                                            const newItem = { id: generateId(), imageUrl: newMoodboardImageUrl, caption: "" };
+                                            updateBlock(parentSectionId!, selectedBlock!.id, { items: [...selectedBlock!.items, newItem] });
+                                            setNewMoodboardImageUrl("");
+                                        }
+                                    }}
+                                    disabled={!newMoodboardImageUrl}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {selectedBlock.items.map((item, idx) => (
+                                    <div key={item.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl space-y-2 bg-white dark:bg-zinc-800">
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-900 overflow-hidden shrink-0">
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-1 min-w-0 space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                     <span className="text-xs font-medium text-zinc-400">Image {idx + 1}</span>
+                                                     <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-6 w-6 p-0 text-zinc-400 hover:text-red-500"
+                                                        onClick={() => {
+                                                            const newItems = selectedBlock!.items.filter(i => i.id !== item.id);
+                                                            updateBlock(parentSectionId!, selectedBlock!.id, { items: newItems });
+                                                        }}
+                                                    >
+                                                        ✕
+                                                    </Button>
+                                                </div>
+                                                <Input 
+                                                    placeholder="Caption (optional)"
+                                                    value={item.caption || ""}
+                                                    onChange={(e) => {
+                                                        const newItems = selectedBlock!.items.map(i => 
+                                                            i.id === item.id ? { ...i, caption: e.target.value } : i
+                                                        );
+                                                        updateBlock(parentSectionId!, selectedBlock!.id, { items: newItems });
+                                                    }}
+                                                    className="h-8 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* This Not This Block */}
+                {selectedBlock.type === "this_not_this" && (
+                    <>
+                        <Field label="Label">
+                            <Input
+                                value={selectedBlock.label}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { label: e.target.value })}
+                            />
+                        </Field>
+                        <Field label="Helper Text">
+                            <Input
+                                value={selectedBlock.helperText || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { helperText: e.target.value })}
+                            />
+                        </Field>
+
+                        <div className="pt-6 border-t border-zinc-100 dark:border-zinc-800/50 space-y-4">
+                            <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Sorting Items</h3>
+                            
+                            <div className="flex gap-2">
+                                <Input 
+                                    placeholder="Image URL" 
+                                    value={newThisNotThisImageUrl}
+                                    onChange={(e) => setNewThisNotThisImageUrl(e.target.value)}
+                                />
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        if (newThisNotThisImageUrl) {
+                                            const newItem = { id: generateId(), imageUrl: newThisNotThisImageUrl, caption: "" };
+                                            updateBlock(parentSectionId!, selectedBlock!.id, { items: [...selectedBlock!.items, newItem] });
+                                            setNewThisNotThisImageUrl("");
+                                        }
+                                    }}
+                                    disabled={!newThisNotThisImageUrl}
+                                >
+                                    Add
+                                </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {selectedBlock.items.map((item, idx) => (
+                                    <div key={item.id} className="p-3 border border-zinc-200 dark:border-zinc-700 rounded-xl space-y-2 bg-white dark:bg-zinc-800">
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-900 overflow-hidden shrink-0">
+                                                <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-1 min-w-0 space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                     <span className="text-xs font-medium text-zinc-400">Item {idx + 1}</span>
+                                                     <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-6 w-6 p-0 text-zinc-400 hover:text-red-500"
+                                                        onClick={() => {
+                                                            const newItems = selectedBlock!.items.filter(i => i.id !== item.id);
+                                                            updateBlock(parentSectionId!, selectedBlock!.id, { items: newItems });
+                                                        }}
+                                                    >
+                                                        ✕
+                                                    </Button>
+                                                </div>
+                                                <Input 
+                                                    placeholder="Caption (optional)"
+                                                    value={item.caption || ""}
+                                                    onChange={(e) => {
+                                                        const newItems = selectedBlock!.items.map(i => 
+                                                            i.id === item.id ? { ...i, caption: e.target.value } : i
+                                                        );
+                                                        updateBlock(parentSectionId!, selectedBlock!.id, { items: newItems });
+                                                    }}
+                                                    className="h-8 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </>
                 )}

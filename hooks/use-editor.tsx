@@ -17,6 +17,7 @@ interface EditorContextType extends EditorState {
   updateBlock: (sectionId: string, blockId: string, updates: Partial<IntakeBlock>) => void;
   removeBlock: (sectionId: string, blockId: string) => void;
   moveBlock: (activeId: string, overId: string, overSectionId: string) => void; 
+  addConnection: (fromSectionId: string, toSectionId: string, fromBlockId: string, optionValue: string) => void;
   
   // Selection
   selectItem: (id: string | null) => void;
@@ -31,6 +32,8 @@ interface EditorContextType extends EditorState {
   setSections: (sections: IntakeSection[] | ((prev: IntakeSection[]) => IntakeSection[])) => void;
   isPreviewMode: boolean;
   togglePreview: () => void;
+  isToolboxOpen: boolean;
+  setToolboxOpen: (open: boolean) => void;
 }
 
 export const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -45,10 +48,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isToolboxOpen, setToolboxOpen] = useState(true);
 
   // Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -129,13 +134,46 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setSelectedId(block.id);
   };
 
+  const addConnection = (fromSectionId: string, toSectionId: string, fromBlockId: string, optionValue: string) => {
+      setSections(prev => prev.map(sec => {
+          if (sec.id === fromSectionId) {
+              const currentRouting = sec.routing || [];
+              // Prevent duplicate rules for same block + value
+              if (currentRouting.some(r => r.fromBlockId === fromBlockId && r.value === optionValue)) {
+                  return sec;
+              }
+              
+              const newRule = {
+                  id: generateId(),
+                  fromBlockId,
+                  operator: "equals" as const,
+                  value: optionValue,
+                  nextSectionId: toSectionId
+              };
+              
+              return { ...sec, routing: [...currentRouting, newRule] };
+          }
+          return sec;
+      }));
+  };
+
   const updateBlock = (sectionId: string, blockId: string, updates: Partial<IntakeBlock>) => {
     setSections((prev) =>
       prev.map((sec) => {
         if (sec.id !== sectionId) return sec;
         return {
           ...sec,
-          blocks: sec.blocks.map((b) => (b.id === blockId ? { ...b, ...updates } as IntakeBlock : b)),
+          blocks: sec.blocks.map((b) => {
+              if (b.id !== blockId) return b;
+              
+              // Handle discriminated union updates carefully
+              const updatedBlock = { ...b, ...updates };
+              
+              // If type is changing or preserved, TypeScript needs help verifying the discriminated union
+              // We cast to any to allow the update, assuming the caller respects the type contract
+              // For safety, we can ensure 'type' isn't accidentally overwritten with incompatible properties
+              return updatedBlock as IntakeBlock;
+          }),
         };
       })
     );
@@ -238,12 +276,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         updateBlock,
         removeBlock,
         moveBlock,
+        addConnection,
         selectItem,
         setSections,
         updateMetadata,
         publishIntake,
         isPreviewMode,
         togglePreview,
+        isToolboxOpen,
+        setToolboxOpen,
       }}
     >
       {children}
