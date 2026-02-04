@@ -496,8 +496,10 @@ export function PropertiesPanel() {
                     
                     {(() => {
                         // Find eligible trigger questions (Select type only for MVP)
+                        // Use a filter with a type predicate or simple filter and then check type in map
                         const eligibleQuestions = selectedSection.blocks.filter(
-                            b => b.type === "question" && b.inputType === "select"
+                            (b): b is Extract<IntakeBlock, { type: "question"; inputType: "select" }> => 
+                            b.type === "question" && b.inputType === "select"
                         );
 
                         if (eligibleQuestions.length === 0) {
