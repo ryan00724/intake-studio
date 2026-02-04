@@ -26,7 +26,7 @@ export function generateSchema(sections: IntakeSection[]) {
                     fieldSchema = (fieldSchema as z.ZodString).optional();
                 }
             }
-        } else {
+        } else if (block.type === "question") {
             // It's a QuestionBlock
             switch (block.inputType) {
                 case "short":
@@ -60,9 +60,12 @@ export function generateSchema(sections: IntakeSection[]) {
                 default:
                     fieldSchema = z.any();
             }
+        } else {
+            // Visual blocks (image_moodboard, this_not_this) - no validation needed yet
+            return; 
         }
 
-        schemaShape[block.id] = fieldSchema;
+        schemaShape[block.id] = fieldSchema!;
     });
   });
 
