@@ -1,7 +1,7 @@
 "use client";
 
 import { useEditor } from "@/hooks/use-editor";
-import { IntakeSection, IntakeBlock, InputType } from "@/types/editor";
+import { IntakeSection, IntakeBlock, InputType, QuestionBlock } from "@/types/editor";
 import { Panel } from "@/src/components/ui/Panel";
 import { Field } from "@/src/components/ui/Field";
 import { Input } from "@/src/components/ui/Input";
@@ -496,11 +496,9 @@ export function PropertiesPanel() {
                     
                     {(() => {
                         // Find eligible trigger questions (Select type only for MVP)
-                        // Use a filter with a type predicate or simple filter and then check type in map
                         const eligibleQuestions = selectedSection.blocks.filter(
-                            (b): b is Extract<IntakeBlock, { type: "question"; inputType: "select" }> => 
-                            b.type === "question" && b.inputType === "select"
-                        );
+                            b => b.type === "question" && b.inputType === "select"
+                        ) as QuestionBlock[];
 
                         if (eligibleQuestions.length === 0) {
                             return (
@@ -516,8 +514,10 @@ export function PropertiesPanel() {
                         return (
                             <div className="space-y-3">
                                 {rules.map((rule, idx) => {
+                                    // With type predicate above, eligibleQuestions are strictly select questions
                                     const triggerBlock = eligibleQuestions.find(b => b.id === rule.fromBlockId);
-                                    // @ts-ignore - options exists on QuestionBlock
+                                    
+                                    // If for some reason block is missing (deleted), safe access
                                     const options = triggerBlock?.options || [];
 
                                     return (
@@ -557,7 +557,7 @@ export function PropertiesPanel() {
                                                             newRules[idx] = { ...rule, value: val };
                                                             updateSection(selectedSection!.id, { routing: newRules });
                                                         }}
-                                                        options={options.map(opt => ({ label: opt, value: opt }))}
+                                                        options={options.map((opt: string) => ({ label: opt, value: opt }))}
                                                     />
                                                 </div>
                                             </div>
@@ -584,14 +584,16 @@ export function PropertiesPanel() {
                                     onClick={() => {
                                         const newRule = {
                                             id: generateId(),
-                                            fromBlockId: eligibleQuestions[0].id,
+                                            fromBlockId: eligibleQuestions[0]?.id || "", // Safe access
                                             operator: "equals" as const,
                                             value: "",
                                             nextSectionId: otherSections[0]?.id || ""
                                         };
-                                        updateSection(selectedSection!.id, { routing: [...rules, newRule] });
+                                        if (newRule.fromBlockId) {
+                                            updateSection(selectedSection!.id, { routing: [...rules, newRule] });
+                                        }
                                     }}
-                                    disabled={otherSections.length === 0}
+                                    disabled={otherSections.length === 0 || eligibleQuestions.length === 0}
                                 >
                                     + Add Routing Rule
                                 </Button>
