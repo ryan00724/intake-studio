@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { EditorState, IntakeSection, IntakeBlock, IntakeMetadata, PublishedIntake } from "@/types/editor";
 import { INITIAL_SECTIONS, generateId } from "@/lib/constants";
 import { storePublishedInIdb, PublishedPointer } from "@/lib/published-storage";
+import { validateFlow, FlowValidationResult } from "@/src/lib/flow-validation";
 
 interface EditorContextType extends EditorState {
   // Section actions
@@ -36,6 +37,7 @@ interface EditorContextType extends EditorState {
   togglePreview: () => void;
   isToolboxOpen: boolean;
   setToolboxOpen: (open: boolean) => void;
+  validation: FlowValidationResult;
 }
 
 export const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -52,6 +54,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isToolboxOpen, setToolboxOpen] = useState(true);
+
+  // Compute validation
+  const validation = useMemo(() => validateFlow(sections), [sections]);
 
   // Load from localStorage
   useEffect(() => {
@@ -322,6 +327,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         togglePreview,
         isToolboxOpen,
         setToolboxOpen,
+        validation,
       }}
     >
       {children}
