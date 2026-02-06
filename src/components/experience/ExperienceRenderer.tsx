@@ -1,11 +1,12 @@
 import React from "react";
-import { IntakeSection, IntakeTheme } from "@/types/editor";
+import { IntakeSection, IntakeTheme, IntakeEdge } from "@/types/editor";
 import { PersonalizationParams } from "@/src/lib/experience/personalize";
 import { GuidedExperience } from "./GuidedExperience";
 import { DocumentExperience } from "./DocumentExperience";
 
 interface ExperienceRendererProps {
   sections: IntakeSection[];
+  edges?: IntakeEdge[];
   mode: "guided" | "document";
   personalization?: PersonalizationParams;
   title?: string;
@@ -20,6 +21,7 @@ interface ExperienceRendererProps {
 
 export function ExperienceRenderer({
   sections,
+  edges,
   mode,
   personalization,
   title,
@@ -46,6 +48,7 @@ export function ExperienceRenderer({
   return (
     <GuidedExperience
       sections={sections}
+      edges={edges}
       personalization={personalization}
       title={title}
       intro={intro}

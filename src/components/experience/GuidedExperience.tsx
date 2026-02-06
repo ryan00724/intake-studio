@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { IntakeSection, IntakeBlock, InputType, IntakeTheme } from "@/types/editor";
+import { IntakeSection, IntakeBlock, InputType, IntakeTheme, IntakeEdge } from "@/types/editor";
 import { personalizeText, PersonalizationParams } from "@/src/lib/experience/personalize";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { CompletionScreen } from "./CompletionScreen";
 import { SectionIntro } from "./SectionIntro";
 import { Moodboard } from "@/src/components/shared/Moodboard";
 import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
+import { getOutgoingRoutes } from "@/src/lib/flow";
 
 interface GuidedExperienceProps {
   sections: IntakeSection[];
+  edges?: IntakeEdge[]; // Added edges prop for node-based routing
   personalization?: PersonalizationParams;
   title?: string;
   intro?: string;
@@ -23,6 +25,7 @@ interface GuidedExperienceProps {
 
 export function GuidedExperience({
   sections,
+  edges,
   personalization,
   title,
   intro,
@@ -85,31 +88,49 @@ export function GuidedExperience({
   const handleNext = () => {
     if (!currentSection) return;
 
-    // 1. Check Routing
-    if (currentSection.routing && currentSection.routing.length > 0) {
-        for (const rule of currentSection.routing) {
-            const answer = answers[rule.fromBlockId];
-            if (rule.operator === "equals" && answer === rule.value) {
-                const nextIndex = sections.findIndex(s => s.id === rule.nextSectionId);
-                const nextSectionId = rule.nextSectionId;
-                
-                // Prevent loops: fallback if next section is already in history
-                if (nextIndex !== -1 && !history.includes(nextSectionId) && currentSection.id !== nextSectionId) {
-                    setHistory(prev => [...prev, currentSection.id]);
-                    setCurrentStep(nextIndex);
-                    
-                    if (sections[nextIndex]?.description) {
-                        setShowSectionIntro(true);
-                    } else {
-                        setShowSectionIntro(false);
-                    }
-                    return;
-                }
+    // 1. Check Routing (Using edge-based helper with legacy fallback)
+    const outgoingRoutes = getOutgoingRoutes(sections, currentSection.id, edges);
+    
+    // Helper to perform the transition
+    const tryNavigate = (targetSectionId: string) => {
+        const nextIndex = sections.findIndex(s => s.id === targetSectionId);
+        
+        // Prevent loops: check if next section is already in history (basic cycle detection)
+        if (nextIndex !== -1 && !history.includes(targetSectionId) && currentSection.id !== targetSectionId) {
+            setHistory(prev => [...prev, currentSection.id]);
+            setCurrentStep(nextIndex);
+            
+            if (sections[nextIndex]?.description) {
+                setShowSectionIntro(true);
+            } else {
+                setShowSectionIntro(false);
+            }
+            return true;
+        }
+        return false;
+    };
+
+    // Priority 1: Conditional Routes
+    // Evaluate conditions to find the first matching route
+    for (const route of outgoingRoutes) {
+        if (route.condition) {
+            const { fromBlockId, operator, value } = route.condition;
+            const answer = answers[fromBlockId];
+            
+            if (operator === "equals" && answer === value) {
+                if (tryNavigate(route.targetSectionId)) return;
             }
         }
     }
 
-    // 2. Default Linear Progression
+    // Priority 2: Unconditional Route (Default)
+    // If no conditions matched, check for a route without conditions
+    const defaultRoute = outgoingRoutes.find(r => !r.condition);
+    if (defaultRoute) {
+        if (tryNavigate(defaultRoute.targetSectionId)) return;
+    }
+
+    // 2. Default Linear Progression (Fallback if no routing matched or valid)
     const nextStep = currentStep + 1;
     if (nextStep < totalSections) {
         // Moving to next section
@@ -187,7 +208,7 @@ export function GuidedExperience({
         className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12 overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
-        {activeBackground?.type === "video" && activeBackground.videoUrl && activeBackground.videoUrl.endsWith(".mp4") && (
+        {activeBackground?.type === "video" && activeBackground.videoUrl && (
             <video
                 autoPlay
                 loop
@@ -196,7 +217,7 @@ export function GuidedExperience({
                 preload="metadata"
                 className="absolute inset-0 w-full h-full object-cover z-0"
             >
-                <source src={activeBackground.videoUrl} type="video/mp4" />
+                <source src={activeBackground.videoUrl.startsWith("http") || activeBackground.videoUrl.startsWith("/") ? activeBackground.videoUrl : `/${activeBackground.videoUrl}`} type="video/mp4" />
             </video>
         )}
 
@@ -475,36 +496,40 @@ function BlockRenderer({
     );
   }
 
-  const label = personalizeText(block.label, personalization);
-  const helperText = personalizeText(block.helperText, personalization);
+  if (block.type === "question") {
+      const label = personalizeText(block.label, personalization);
+      const helperText = personalizeText(block.helperText, personalization);
 
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
-        {label}
-        {block.required && (
-          <span 
-            className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded"
-            style={accentColor ? { color: accentColor, backgroundColor: `${accentColor}20` } : undefined}
-          >
-            Required
-          </span>
-        )}
-      </label>
-      
-      {helperText && (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{helperText}</p>
-      )}
+      return (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
+            {label}
+            {block.required && (
+              <span 
+                className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded"
+                style={accentColor ? { color: accentColor, backgroundColor: `${accentColor}20` } : undefined}
+              >
+                Required
+              </span>
+            )}
+          </label>
+          
+          {helperText && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{helperText}</p>
+          )}
 
-      <InputRenderer 
-        type={block.inputType} 
-        options={block.options} 
-        accentColor={accentColor} 
-        value={value}
-        onChange={onChange}
-      />
-    </div>
-  );
+          <InputRenderer 
+            type={block.inputType} 
+            options={block.options} 
+            accentColor={accentColor} 
+            value={value}
+            onChange={onChange}
+          />
+        </div>
+      );
+  }
+
+  return null;
 }
 
 function InputRenderer({ 

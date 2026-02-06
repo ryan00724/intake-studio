@@ -18,6 +18,8 @@ interface EditorContextType extends EditorState {
   removeBlock: (sectionId: string, blockId: string) => void;
   moveBlock: (activeId: string, overId: string, overSectionId: string) => void; 
   addConnection: (fromSectionId: string, toSectionId: string, fromBlockId: string, optionValue: string) => void;
+  updateRouting: (sectionId: string, ruleId: string, updates: Partial<import("@/types/editor").SectionRouteRule>) => void;
+  removeRouting: (sectionId: string, ruleId: string) => void;
   
   // Selection
   selectItem: (id: string | null) => void;
@@ -46,6 +48,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [sections, setSections] = useState<IntakeSection[]>([]);
   const [metadata, setMetadata] = useState<IntakeMetadata>({ title: "Untitled Intake", mode: "guided" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [edges, setEdges] = useState<any[]>([]); // Placeholder for edges, logic to be added
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isToolboxOpen, setToolboxOpen] = useState(true);
@@ -157,6 +160,30 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       }));
   };
 
+  const updateRouting = (sectionId: string, ruleId: string, updates: Partial<import("@/types/editor").SectionRouteRule>) => {
+      setSections(prev => prev.map(sec => {
+          if (sec.id === sectionId && sec.routing) {
+              return {
+                  ...sec,
+                  routing: sec.routing.map(rule => rule.id === ruleId ? { ...rule, ...updates } : rule)
+              };
+          }
+          return sec;
+      }));
+  };
+
+  const removeRouting = (sectionId: string, ruleId: string) => {
+      setSections(prev => prev.map(sec => {
+          if (sec.id === sectionId && sec.routing) {
+              return {
+                  ...sec,
+                  routing: sec.routing.filter(rule => rule.id !== ruleId)
+              };
+          }
+          return sec;
+      }));
+  };
+
   const updateBlock = (sectionId: string, blockId: string, updates: Partial<IntakeBlock>) => {
     setSections((prev) =>
       prev.map((sec) => {
@@ -222,6 +249,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       const publishedData: PublishedIntake = {
           slug,
           sections,
+          edges, // Include edges if you have them in state (currently we use section.routing as source of truth for now, but if we migrate fully to edges state, we pass it here)
+          // Since edges state is currently a placeholder, and we derive edges from section.routing, we might want to normalize it before publishing or just stick to sections for now if edges are not fully populated.
+          // However, the request implies we should pass edges. 
+          // If edges state is empty, maybe we should derive them?
+          // But getOutgoingRoutes is a read helper.
+          // For now, let's pass the edges state even if empty, assuming future migration.
+          // Or better: if edges state is empty but sections have routing, we can optionally populate edges here.
+          // But the goal is just "pass edges from published data". So we just include the field.
           metadata: { ...metadata, slug, publishedAt: new Date().toISOString() },
           publishedAt: Date.now()
       };
@@ -277,6 +312,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         removeBlock,
         moveBlock,
         addConnection,
+        updateRouting,
+        removeRouting,
         selectItem,
         setSections,
         updateMetadata,

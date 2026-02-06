@@ -121,15 +121,28 @@ export interface IntakeMetadata {
     theme?: IntakeTheme;
 }
 
+export interface IntakeEdge {
+  id: string;
+  source: string;
+  target: string;
+  condition?: {
+    fromBlockId: string;
+    operator: "equals";
+    value: string;
+  };
+}
+
 export interface EditorState {
   sections: IntakeSection[];
+  edges?: IntakeEdge[];
   metadata: IntakeMetadata;
-  selectedId: string | null; // Can be section ID or block ID
+  selectedId: string | null; // Can be section ID, block ID, or edge ID (prefixed with "edge:")
 }
 
 export interface PublishedIntake {
     slug: string;
     sections: IntakeSection[];
+    edges?: IntakeEdge[];
     metadata: IntakeMetadata;
     publishedAt: number;
 }

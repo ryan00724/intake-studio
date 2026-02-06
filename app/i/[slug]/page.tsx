@@ -70,7 +70,8 @@ export default function PublishedIntakePage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 font-sans">
        <GuidedExperience 
-          sections={intake.sections} 
+          sections={intake.sections}
+          edges={(intake as any).edges} // Pass edges if available in published data
           title={intake.metadata.title}
           intro={intake.metadata.description}
           estimatedTime={intake.metadata.estimatedTime}

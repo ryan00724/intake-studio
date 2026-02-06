@@ -37,7 +37,10 @@ export function PropertiesPanel() {
     updateBlock, 
     removeBlock,
     metadata,
-    updateMetadata
+    updateMetadata,
+    selectItem,
+    updateRouting,
+    removeRouting
   } = useEditor();
   
   const [copied, setCopied] = useState(false);
@@ -47,13 +50,48 @@ export function PropertiesPanel() {
   // Find selection
   let selectedSection: IntakeSection | undefined;
   let selectedBlock: IntakeBlock | undefined;
+  let selectedEdge: import("@/types/editor").IntakeEdge | undefined;
   let parentSectionId: string | undefined;
+
+  // Check selection type
+  if (selectedId?.startsWith("edge:")) {
+      // Format: edge:sourceId:targetId or edge:edgeId (virtual ID from canvas)
+      // Since we don't have edges in state yet, we construct a virtual edge object from the ID parts
+      // This assumes the ID format is consistent with what Canvas generates: edge:sourceId:targetId or edge:sectionId:ruleId
+      const parts = selectedId.split(':');
+      if (parts.length >= 3) {
+          // It's a rule-based edge: edge:sectionId:ruleId
+          // Or a sequential edge: edge:sourceId:targetId (if we add selection to sequential lines)
+          
+          // Let's assume for now we only edit routing rules via edge selection
+          const sourceId = parts[1];
+          const ruleId = parts[2]; // This might be targetId for sequential, or ruleId for routing
+          
+          const sourceSection = sections.find(s => s.id === sourceId);
+          if (sourceSection) {
+              const rule = sourceSection.routing?.find(r => r.id === ruleId);
+              if (rule) {
+                  selectedEdge = {
+                      id: rule.id,
+                      source: sourceId,
+                      target: rule.nextSectionId,
+                      condition: {
+                          fromBlockId: rule.fromBlockId,
+                          operator: rule.operator,
+                          value: rule.value
+                      }
+                  };
+                  parentSectionId = sourceId;
+              }
+          }
+      }
+  }
 
   // Check if section
   selectedSection = sections.find(s => s.id === selectedId);
   
   // If not, check if block
-  if (!selectedSection) {
+  if (!selectedSection && !selectedId?.startsWith("edge:")) {
       for (const sec of sections) {
           const found = sec.blocks.find(b => b.id === selectedId);
           if (found) {
@@ -64,7 +102,6 @@ export function PropertiesPanel() {
       }
   }
 
-  
   const handleCopySlug = () => {
     if (metadata.slug) {
         navigator.clipboard.writeText(`${window.location.origin}/i/${metadata.slug}`);
@@ -132,9 +169,8 @@ export function PropertiesPanel() {
             reader.readAsDataURL(e.target.files[0]);
         }
     };
-
     // GLOBAL METADATA EDITING (No Selection)
-  if (!selectedId || (!selectedSection && !selectedBlock)) {
+  if (!selectedId || (!selectedSection && !selectedBlock && !selectedEdge)) {
     return (
       <Panel className="w-80 flex flex-col h-full shadow-sm">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/50">
@@ -223,8 +259,8 @@ export function PropertiesPanel() {
                                 })}
                                 placeholder="https://example.com/video.mp4"
                             />
-                            {metadata.theme.background.videoUrl && !metadata.theme.background.videoUrl.endsWith(".mp4") && (
-                                <p className="text-xs text-red-500 mt-1">URL must end with .mp4</p>
+                            {metadata.theme.background.videoUrl && !metadata.theme.background.videoUrl.match(/\.(mp4|webm|mov)$/i) && (
+                                <p className="text-xs text-zinc-400 mt-1">Note: MP4 recommended. For local public files, ensure path starts with &apos;/&apos;.</p>
                             )}
                         </Field>
 
@@ -461,10 +497,10 @@ export function PropertiesPanel() {
     <Panel className="w-80 flex flex-col h-full shadow-sm">
       <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/50 flex justify-between items-center">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {selectedSection ? "Section Properties" : "Block Properties"}
+            {selectedSection ? "Section Properties" : selectedBlock ? "Block Properties" : "Connection"}
         </h2>
         <span className="text-[10px] font-medium tracking-wider text-zinc-400 uppercase bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
-            {selectedSection ? "Section" : selectedBlock?.type}
+            {selectedSection ? "Section" : selectedBlock ? selectedBlock.type : "Edge"}
         </span>
       </div>
       
@@ -495,15 +531,15 @@ export function PropertiesPanel() {
                     </h3>
                     
                     {(() => {
-                        // Find eligible trigger questions (Select type only for MVP)
+                        // Find eligible trigger questions (Select type or Image Choice)
                         const eligibleQuestions = selectedSection.blocks.filter(
-                            b => b.type === "question" && b.inputType === "select"
-                        ) as QuestionBlock[];
+                            b => (b.type === "question" && b.inputType === "select") || b.type === "image_choice"
+                        ) as (QuestionBlock | import("@/types/editor").ImageChoiceBlock)[];
 
                         if (eligibleQuestions.length === 0) {
                             return (
                                 <p className="text-xs text-zinc-400 italic">
-                                    Add a "Select Dropdown" question to this section to configure conditional routing.
+                                    Add a "Select Dropdown" or "Image Choice" question to this section to configure conditional routing.
                                 </p>
                             );
                         }
@@ -514,11 +550,21 @@ export function PropertiesPanel() {
                         return (
                             <div className="space-y-3">
                                 {rules.map((rule, idx) => {
-                                    // With type predicate above, eligibleQuestions are strictly select questions
                                     const triggerBlock = eligibleQuestions.find(b => b.id === rule.fromBlockId);
                                     
-                                    // If for some reason block is missing (deleted), safe access
-                                    const options = triggerBlock?.options || [];
+                                    // Normalize options based on block type
+                                    let options: { label: string; value: string }[] = [];
+                                    if (triggerBlock?.type === "image_choice") {
+                                        options = (triggerBlock as any).options.map((o: any) => ({ 
+                                            label: o.label || "Untitled Option", 
+                                            value: o.id 
+                                        }));
+                                    } else if (triggerBlock?.type === "question") {
+                                        options = ((triggerBlock as any).options || []).map((o: string) => ({ 
+                                            label: o, 
+                                            value: o 
+                                        }));
+                                    }
 
                                     return (
                                         <div key={rule.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-3 relative group">
@@ -557,7 +603,7 @@ export function PropertiesPanel() {
                                                             newRules[idx] = { ...rule, value: val };
                                                             updateSection(selectedSection!.id, { routing: newRules });
                                                         }}
-                                                        options={options.map((opt: string) => ({ label: opt, value: opt }))}
+                                                        options={options}
                                                     />
                                                 </div>
                                             </div>
@@ -774,7 +820,128 @@ export function PropertiesPanel() {
             </>
         )}
 
-        {/* --- BLOCK EDITING --- */}
+        {/* --- EDGE EDITING --- */}
+        {selectedEdge && parentSectionId && (
+            <>
+                <div className="space-y-4">
+                    <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div className="flex flex-col gap-2 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-zinc-500">From:</span>
+                                <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-[140px]">
+                                    {sections.find(s => s.id === selectedEdge!.source)?.title || "Unknown"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-zinc-500">To:</span>
+                                <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-[140px]">
+                                    {sections.find(s => s.id === selectedEdge!.target)?.title || "Unknown"}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider pt-2">Condition</h3>
+                    
+                    {(() => {
+                        const sourceSection = sections.find(s => s.id === parentSectionId);
+                        // Find eligible trigger questions (Select type or Image Choice)
+                        const eligibleQuestions = sourceSection?.blocks.filter(
+                            b => (b.type === "question" && b.inputType === "select") || b.type === "image_choice"
+                        ) as (QuestionBlock | import("@/types/editor").ImageChoiceBlock)[];
+
+                        if (!eligibleQuestions || eligibleQuestions.length === 0) {
+                            return (
+                                <p className="text-xs text-zinc-400 italic">
+                                    No compatible questions found in source section to create a condition.
+                                </p>
+                            );
+                        }
+
+                        const selectedQuestionId = selectedEdge.condition?.fromBlockId;
+                        const triggerBlock = eligibleQuestions.find(b => b.id === selectedQuestionId);
+                        
+                        // Normalize options
+                        let options: { label: string; value: string }[] = [];
+                        if (triggerBlock?.type === "image_choice") {
+                            options = (triggerBlock as any).options.map((o: any) => ({ 
+                                label: o.label || "Untitled Option", 
+                                value: o.id 
+                            }));
+                        } else if (triggerBlock?.type === "question") {
+                            options = ((triggerBlock as any).options || []).map((o: string) => ({ 
+                                label: o, 
+                                value: o 
+                            }));
+                        }
+
+                        return (
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                    <Select
+                                        value={selectedQuestionId || ""}
+                                        onChange={(val) => {
+                                            if (updateRouting) {
+                                                updateRouting(parentSectionId!, selectedEdge!.id, { 
+                                                    fromBlockId: val,
+                                                    // Reset value when changing question
+                                                    value: "" 
+                                                });
+                                            }
+                                        }}
+                                        options={[
+                                            { label: "Select a question...", value: "" },
+                                            ...eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))
+                                        ]}
+                                    />
+                                </div>
+
+                                {selectedQuestionId && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-zinc-400">Is</span>
+                                        <div className="flex-1">
+                                            <Select
+                                                value={selectedEdge.condition?.value || ""}
+                                                onChange={(val) => {
+                                                    if (updateRouting) {
+                                                        updateRouting(parentSectionId!, selectedEdge!.id, { value: val });
+                                                    }
+                                                }}
+                                                options={[
+                                                    { label: "Select an option...", value: "" },
+                                                    ...options
+                                                ]}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="pt-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm" 
+                                        className="w-full text-zinc-400 hover:text-red-500"
+                                        onClick={() => {
+                                            // Clear condition (make unconditional? or delete routing rule?)
+                                            // Since this is a routing rule edge, deleting condition might mean removing the rule
+                                            // or just removing the condition properties.
+                                            // For now, let's allow deleting the rule entirely via this panel
+                                            if (removeRouting) {
+                                                removeRouting(parentSectionId!, selectedEdge!.id);
+                                                selectItem(null);
+                                            }
+                                        }}
+                                    >
+                                        Delete Connection
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
+            </>
+        )}
         {selectedBlock && parentSectionId && (
             <>
                 {/* Context Block */}

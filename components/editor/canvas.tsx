@@ -15,7 +15,7 @@ export function Canvas() {
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [connections, setConnections] = useState<{ path: string; marker?: string; sourceId: string; targetId: string; isRouting?: boolean }[]>([]);
+  const [connections, setConnections] = useState<{ path: string; marker?: string; sourceId: string; targetId: string; isRouting?: boolean; selectionId?: string }[]>([]);
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
 
   // Function to calculate connection lines
@@ -60,10 +60,15 @@ export function Canvas() {
     };
 
     // 1. Sequential Connections
+    // (Legacy logic for visual flow, but only if no routing exists?)
+    // Actually, let's keep drawing sequential line for now as visual fallback for linear flow
     for (let i = 0; i < sections.length - 1; i++) {
         const currentSection = sections[i];
         const nextSection = sections[i + 1];
         
+        // Skip if this section has explicit routing
+        if (currentSection.routing && currentSection.routing.length > 0) continue;
+
         const currentEl = sectionMap.get(currentSection.id);
         const nextEl = sectionMap.get(nextSection.id);
 
@@ -112,7 +117,20 @@ export function Canvas() {
                         d = `M ${startX} ${anchorsCurrent.start.y} C ${startX} ${anchorsCurrent.start.y + controlOffset}, ${endX} ${anchorsTarget.end.y - controlOffset}, ${endX} ${anchorsTarget.end.y}`;
                     }
 
-                    newConnections.push({ path: d, marker: "url(#arrowhead)", sourceId: section.id, targetId: rule.nextSectionId, isRouting: true });
+                    // Generate a virtual ID for selection (prefix with "edge:")
+                    // We construct it from rule ID if available, or just composite
+                    const edgeId = rule.id || `${section.id}-${rule.nextSectionId}`;
+                    const selectionId = `edge:${section.id}:${rule.id}`;
+
+                    newConnections.push({ 
+                        path: d, 
+                        marker: "url(#arrowhead)", 
+                        sourceId: section.id, 
+                        targetId: rule.nextSectionId, 
+                        isRouting: true,
+                        // Store full ID for selection
+                        selectionId: selectionId 
+                    });
                 }
             });
         }
@@ -167,15 +185,24 @@ export function Canvas() {
             {connections.map((conn, i) => {
                 // Determine active state for edge highlighting
                 const activeId = hoveredSectionId || selectedId;
+                const isSelected = conn.selectionId && selectedId === conn.selectionId;
                 
-                // Connection is active if either source OR target is the active node
+                // Connection is active if either source OR target is the active node OR if the edge itself is selected
                 const isConnectedToActive = activeId ? (conn.sourceId === activeId || conn.targetId === activeId) : false;
                 
                 // Styling
                 let strokeClass = "";
                 let opacityClass = "";
+                let pointerEvents = "pointer-events-none"; // Default
                 
-                if (activeId) {
+                if (conn.isRouting && conn.selectionId) {
+                    pointerEvents = "pointer-events-stroke cursor-pointer";
+                }
+
+                if (isSelected) {
+                    strokeClass = "stroke-indigo-600 stroke-[3px]";
+                    opacityClass = "opacity-100";
+                } else if (activeId) {
                     if (isConnectedToActive) {
                         strokeClass = conn.marker ? "stroke-indigo-500 stroke-[2px]" : "stroke-zinc-500 dark:stroke-zinc-400 stroke-[2px]";
                         opacityClass = "opacity-100";
@@ -185,17 +212,23 @@ export function Canvas() {
                     }
                 } else {
                     // Default state (no selection/hover)
-                    strokeClass = conn.marker ? "stroke-indigo-400/50 stroke-[1.5px]" : "stroke-zinc-300 dark:stroke-zinc-700 stroke-[1.5px]";
-                    opacityClass = "opacity-40";
+                    strokeClass = conn.marker ? "stroke-indigo-400/50 stroke-[1.5px] hover:stroke-[3px] hover:stroke-indigo-500" : "stroke-zinc-300 dark:stroke-zinc-700 stroke-[1.5px]";
+                    opacityClass = "opacity-40 hover:opacity-100";
                 }
 
                 return (
                     <path 
                         key={i}
                         d={conn.path}
-                        className={`transition-all duration-300 ${strokeClass} ${opacityClass}`}
+                        className={`transition-all duration-300 ${strokeClass} ${opacityClass} ${pointerEvents}`}
                         fill="none"
                         markerEnd={conn.marker}
+                        onClick={(e) => {
+                            if (conn.selectionId) {
+                                e.stopPropagation();
+                                selectItem(conn.selectionId);
+                            }
+                        }}
                     />
                 );
             })}

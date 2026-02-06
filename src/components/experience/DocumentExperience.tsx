@@ -42,7 +42,7 @@ export function DocumentExperience({
         className="min-h-screen transition-colors duration-300 relative overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
-        {theme?.background?.type === "video" && theme.background.videoUrl && theme.background.videoUrl.endsWith(".mp4") && (
+        {theme?.background?.type === "video" && theme.background.videoUrl && (
             <video
                 autoPlay
                 loop
@@ -51,7 +51,7 @@ export function DocumentExperience({
                 preload="metadata"
                 className="absolute inset-0 w-full h-full object-cover z-0"
             >
-                <source src={theme.background.videoUrl} type="video/mp4" />
+                <source src={theme.background.videoUrl.startsWith("http") || theme.background.videoUrl.startsWith("/") ? theme.background.videoUrl : `/${theme.background.videoUrl}`} type="video/mp4" />
             </video>
         )}
         
@@ -262,27 +262,31 @@ function BlockRenderer({
     );
   }
 
-  const label = personalizeText(block.label, personalization);
-  const helperText = personalizeText(block.helperText, personalization);
+  if (block.type === "question") {
+      const label = personalizeText(block.label, personalization);
+      const helperText = personalizeText(block.helperText, personalization);
 
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
-        {label}
-        {block.required && (
-          <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">
-            Required
-          </span>
-        )}
-      </label>
-      
-      {helperText && (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{helperText}</p>
-      )}
+      return (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
+            {label}
+            {block.required && (
+              <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">
+                Required
+              </span>
+            )}
+          </label>
+          
+          {helperText && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{helperText}</p>
+          )}
 
-      <InputRenderer type={block.inputType} options={block.options} accentColor={accentColor} />
-    </div>
-  );
+          <InputRenderer type={block.inputType} options={block.options} accentColor={accentColor} />
+        </div>
+      );
+  }
+
+  return null;
 }
 
 function InputRenderer({ type, options, accentColor }: { type: InputType; options?: string[]; accentColor?: string }) {
