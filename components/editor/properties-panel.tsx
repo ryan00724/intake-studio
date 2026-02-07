@@ -325,6 +325,48 @@ export function PropertiesPanel() {
                     <p className="text-[11px] text-zinc-400 mt-1">Applies to the main intake cards.</p>
                 </Field>
 
+                <Field label="Font Color">
+                    <div className="flex gap-2">
+                        <input 
+                            type="color" 
+                            value={metadata.theme?.fontColor || "#18181b"}
+                            onChange={(e) => {
+                                updateMetadata({ 
+                                    theme: { 
+                                        ...metadata.theme, 
+                                        fontColor: e.target.value 
+                                    } 
+                                });
+                            }}
+                            className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                        />
+                        <Input
+                            value={metadata.theme?.fontColor || ""}
+                            onChange={(e) => updateMetadata({ 
+                                theme: { 
+                                    ...metadata.theme, 
+                                    fontColor: e.target.value || undefined 
+                                } 
+                            })}
+                            placeholder="#18181b"
+                            className="flex-1"
+                        />
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => updateMetadata({ 
+                                theme: { 
+                                    ...metadata.theme, 
+                                    fontColor: undefined 
+                                } 
+                            })}
+                            title="Clear font color"
+                        >
+                            ✕
+                        </Button>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1">Overrides text color in the experience.</p>
+                </Field>
+
                 <Field label="Background Type">
                     <Select
                         value={metadata.theme?.background?.type || "none"}

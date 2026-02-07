@@ -8,7 +8,6 @@ interface CompletionScreenProps {
   buttonLabel?: string;
   buttonUrl?: string;
   personalization?: PersonalizationParams;
-  textColor?: string;
 }
 
 export function CompletionScreen({
@@ -17,7 +16,6 @@ export function CompletionScreen({
   buttonLabel,
   buttonUrl,
   personalization,
-  textColor,
 }: CompletionScreenProps) {
   const personalizedMessage = personalizeText(closingMessage, personalization);
   const personalizedNextSteps = personalizeText(nextSteps, personalization);
@@ -36,15 +34,15 @@ export function CompletionScreen({
         
         <div className="space-y-4">
           <div className="space-y-2">
-             <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50" style={textColor ? { color: textColor } : undefined}>All Set!</h2>
-             <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed" style={textColor ? { color: textColor, opacity: 0.7 } : undefined}>
+             <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">All Set!</h2>
+             <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">
                {personalizedMessage}
              </p>
           </div>
 
           <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-             <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400" style={textColor ? { color: textColor, opacity: 0.5 } : undefined}>What happens next</h3>
-             <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto" style={textColor ? { color: textColor, opacity: 0.7 } : undefined}>
+             <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">What happens next</h3>
+             <p className="text-zinc-600 dark:text-zinc-400 max-w-md mx-auto">
                 {personalizedNextSteps}
              </p>
           </div>

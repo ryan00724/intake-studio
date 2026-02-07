@@ -5,17 +5,6 @@ import { personalizeText, PersonalizationParams } from "@/src/lib/experience/per
 import { Moodboard } from "@/src/components/shared/Moodboard";
 import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
 
-/** Returns black or white text depending on background luminance */
-function getContrastTextColor(hex: string): string {
-  const c = hex.replace("#", "");
-  const r = parseInt(c.substring(0, 2), 16) / 255;
-  const g = parseInt(c.substring(2, 4), 16) / 255;
-  const b = parseInt(c.substring(4, 6), 16) / 255;
-  const toLinear = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
-  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-  return L > 0.4 ? "#000000" : "#ffffff";
-}
-
 interface DocumentExperienceProps {
   sections: IntakeSection[];
   personalization?: PersonalizationParams;
@@ -42,7 +31,6 @@ export function DocumentExperience({
 
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
-  const cardTextColor = hasCardBackground ? getContrastTextColor(cardBackgroundColor!) : undefined;
   const cardClassName = `${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"} backdrop-blur-md shadow-lg rounded-2xl p-8`;
   const cardStyle: React.CSSProperties | undefined = hasCardBackground
     ? { backgroundColor: cardBackgroundColor }
@@ -79,6 +67,9 @@ export function DocumentExperience({
   if (theme?.accentColor) {
     // @ts-ignore
     containerStyle["--accent-color"] = theme.accentColor;
+  }
+  if (theme?.fontColor) {
+    containerStyle.color = theme.fontColor;
   }
 
   return (
@@ -146,12 +137,12 @@ export function DocumentExperience({
             <div className={theme?.background?.type !== "none" ? cardClassName : ""} style={theme?.background?.type !== "none" ? cardStyle : undefined}>
                 <header className="space-y-4 text-center mb-8">
                     {title && (
-                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50" style={cardTextColor ? { color: cardTextColor } : undefined}>
+                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
                         {personalizeText(title, personalization)}
                     </h1>
                     )}
                     {intro && (
-                    <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto" style={cardTextColor ? { color: cardTextColor, opacity: 0.7 } : undefined}>
+                    <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
                         {personalizeText(intro, personalization)}
                     </p>
                     )}
@@ -162,11 +153,11 @@ export function DocumentExperience({
                     {sections.map((section) => (
                     <section key={section.id} className="space-y-6">
                         <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
-                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50" style={{ color: section.style?.color || theme?.accentColor || cardTextColor }}>
+                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50" style={{ color: section.style?.color || theme?.accentColor }}>
                             {personalizeText(section.title, personalization)}
                         </h2>
                         {section.description && (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1" style={cardTextColor ? { color: cardTextColor, opacity: 0.6 } : undefined}>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                             {personalizeText(section.description, personalization)}
                             </p>
                         )}

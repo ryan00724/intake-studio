@@ -7,7 +7,6 @@ interface SectionIntroProps {
   description?: string;
   onContinue: () => void;
   personalization?: PersonalizationParams;
-  textColor?: string;
 }
 
 export function SectionIntro({
@@ -15,7 +14,6 @@ export function SectionIntro({
   description,
   onContinue,
   personalization,
-  textColor,
 }: SectionIntroProps) {
   const personalizedTitle = personalizeText(title, personalization);
   const personalizedDesc = personalizeText(description, personalization);
@@ -29,12 +27,12 @@ export function SectionIntro({
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="space-y-4 w-full"
       >
-        <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400" style={textColor ? { color: textColor, opacity: 0.4 } : undefined}>Section Intro</span>
-        <h2 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50" style={textColor ? { color: textColor } : undefined}>
+        <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Section Intro</span>
+        <h2 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           {personalizedTitle}
         </h2>
         {description && (
-            <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed max-w-lg mx-auto" style={textColor ? { color: textColor, opacity: 0.7 } : undefined}>
+            <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed max-w-lg mx-auto">
             {personalizedDesc}
             </p>
         )}

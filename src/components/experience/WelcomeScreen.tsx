@@ -8,7 +8,6 @@ interface WelcomeScreenProps {
   estimatedTime?: string;
   personalization?: PersonalizationParams;
   onStart: () => void;
-  textColor?: string;
 }
 
 export function WelcomeScreen({
@@ -17,7 +16,6 @@ export function WelcomeScreen({
   estimatedTime = "3–5 minutes",
   personalization,
   onStart,
-  textColor,
 }: WelcomeScreenProps) {
   const personalizedTitle = personalizeText(title, personalization);
   const personalizedIntro = personalizeText(intro, personalization);
@@ -30,19 +28,19 @@ export function WelcomeScreen({
         transition={{ duration: 0.5 }}
         className="space-y-4"
       >
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50" style={textColor ? { color: textColor } : undefined}>
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {personalizedTitle}
         </h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed" style={textColor ? { color: textColor, opacity: 0.7 } : undefined}>
+        <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">
           {personalizedIntro}
         </p>
         
         <div className="flex flex-col items-center gap-2 pt-2">
-           <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 px-3 py-1 rounded-full" style={textColor ? { color: textColor, opacity: 0.5 } : undefined}>
+           <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 px-3 py-1 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>Takes about {estimatedTime}</span>
            </div>
-           <p className="text-xs text-zinc-400 dark:text-zinc-500" style={textColor ? { color: textColor, opacity: 0.4 } : undefined}>
+           <p className="text-xs text-zinc-400 dark:text-zinc-500">
              You can save and come back anytime
            </p>
         </div>
