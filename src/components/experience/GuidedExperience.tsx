@@ -9,6 +9,18 @@ import { Moodboard } from "@/src/components/shared/Moodboard";
 import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
 import { getOutgoingRoutes } from "@/src/lib/flow";
 
+/** Returns black or white text depending on background luminance */
+function getContrastTextColor(hex: string): string {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  // sRGB relative luminance
+  const toLinear = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return L > 0.4 ? "#000000" : "#ffffff";
+}
+
 interface GuidedExperienceProps {
   sections: IntakeSection[];
   edges?: IntakeEdge[]; // Added edges prop for node-based routing
@@ -245,6 +257,14 @@ export function GuidedExperience({
   };
 
   const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | undefined>(undefined);
+  const hasVideoBackground = activeBackground?.type === "video" && Boolean(activeBackground.videoUrl);
+  const [videoReady, setVideoReady] = React.useState(false);
+
+  // If there's no video background, mark as ready immediately
+  React.useEffect(() => {
+    if (!hasVideoBackground) setVideoReady(true);
+    else setVideoReady(false);
+  }, [hasVideoBackground]);
 
   React.useEffect(() => {
     const url = activeBackground?.type === "video" ? activeBackground.videoUrl : undefined;
@@ -265,19 +285,38 @@ export function GuidedExperience({
 
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
+  const cardTextColor = hasCardBackground ? getContrastTextColor(cardBackgroundColor!) : undefined;
   const commonProps = {
       theme,
-      // If we are in a theme mode, wrap content in a card style visually
       cardClassName: activeBackground?.type !== "none"
         ? `backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto ${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"}`
         : "",
       cardStyle: activeBackground?.type !== "none" && hasCardBackground
         ? { backgroundColor: cardBackgroundColor }
-        : undefined
+        : undefined,
   };
   return (
+    <>
+    {/* Loading overlay – visible until video (if any) is ready to play */}
+    <AnimatePresence>
+      {!videoReady && (
+        <motion.div
+          key="video-loader"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black"
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full border-2 border-zinc-700 border-t-white animate-spin" />
+          </div>
+          <p className="mt-4 text-sm text-zinc-500 animate-pulse">Loading experience...</p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <div 
-        className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12 overflow-y-auto" 
+        className={`min-h-screen transition-all duration-700 relative flex flex-col items-center justify-center py-12 overflow-y-auto ${videoReady ? "opacity-100" : "opacity-0"}`}
         style={{ ...bgStyle, ...containerStyle }}
     >
         {activeBackground?.type === "video" && (resolvedVideoUrl || activeBackground.videoUrl) && (
@@ -291,6 +330,7 @@ export function GuidedExperience({
                 crossOrigin="anonymous"
                 className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
                 src={(() => { const u = resolvedVideoUrl || activeBackground?.videoUrl || ""; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
+                onCanPlay={() => setVideoReady(true)}
             />
         )}
 
@@ -326,6 +366,7 @@ export function GuidedExperience({
                         estimatedTime={estimatedTime}
                         personalization={personalization}
                         onStart={handleStart}
+                        textColor={cardTextColor}
                     />
                 </div>
             )}
@@ -338,6 +379,7 @@ export function GuidedExperience({
                         buttonLabel={completionButtonLabel}
                         buttonUrl={completionButtonUrl}
                         personalization={personalization}
+                        textColor={cardTextColor}
                     />
                     {submitting && (
                         <div className="text-center mt-4">
@@ -358,13 +400,14 @@ export function GuidedExperience({
                                     description={currentSection.description}
                                     personalization={personalization}
                                     onContinue={() => setShowSectionIntro(false)}
+                                    textColor={cardTextColor}
                                 />
                             </AnimatePresence>
                         </div>
                     ) : (
                         <div className={`w-full max-w-2xl mx-auto ${commonProps.cardClassName ? commonProps.cardClassName : ""}`} style={commonProps.cardStyle}>
                             {/* Progress Indicator */}
-                            <div className="w-full mb-8 flex items-center justify-between text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                            <div className="w-full mb-8 flex items-center justify-between text-xs font-medium text-zinc-400 uppercase tracking-wider" style={cardTextColor ? { color: cardTextColor, opacity: 0.5 } : undefined}>
                                 <span>Step {currentStep + 1} of {totalSections}</span>
                                 <span>{Math.round(((currentStep + 1) / totalSections) * 100)}% Complete</span>
                             </div>
@@ -382,7 +425,7 @@ export function GuidedExperience({
                                 <div className="space-y-2 border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-6">
                                     <h2 
                                         className="text-xl font-semibold text-zinc-900 dark:text-zinc-50"
-                                        style={{ color: currentSection.style?.color || theme?.accentColor }}
+                                        style={{ color: currentSection.style?.color || theme?.accentColor || cardTextColor }}
                                     >
                                     {personalizeText(currentSection.title, personalization)}
                                     </h2>
@@ -426,6 +469,7 @@ export function GuidedExperience({
             )}
         </div>
     </div>
+    </>
   );
 }
 

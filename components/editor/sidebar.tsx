@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Panel } from "@/src/components/ui/Panel";
 import { 
   LayoutTemplate, 
   Type, 
-  ListChecks, 
   Grid,
   Layers,
   MousePointer2,
@@ -21,10 +20,12 @@ import {
   Upload,
   Link,
   Phone,
-  Briefcase
+  Briefcase,
+  ListChecks
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BlockType, InputType } from "@/types/editor";
+import { useEditor } from "@/hooks/use-editor";
 
 // --- Configuration ---
 
@@ -123,80 +124,38 @@ function ToolboxCard({ data }: { data: ToolConfig }) {
   );
 }
 
-function CategoryNav({ activeId, onSelect }: { activeId: CategoryId, onSelect: (id: CategoryId) => void }) {
-  return (
-    <div className="w-16 flex-shrink-0 flex flex-col items-center py-4 gap-2 border-r border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-        {CATEGORIES.map((cat) => {
-            const isActive = activeId === cat.id;
-            const Icon = cat.icon;
-            
-            return (
-                <button
-                    key={cat.id}
-                    onClick={() => onSelect(cat.id)}
-                    className="group relative flex flex-col items-center gap-1 p-2 w-full outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/20 rounded-lg"
-                >
-                    <div className={`
-                        p-2 rounded-xl transition-all duration-200
-                        ${isActive 
-                            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-sm' 
-                            : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}
-                    `}>
-                        <Icon className="w-5 h-5" />
-                    </div>
-                    <span className={`text-[9px] font-medium tracking-wide uppercase transition-colors ${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-600'}`}>
-                        {cat.label}
-                    </span>
-                </button>
-            )
-        })}
-    </div>
-  );
-}
-
-import { useEditor } from "@/hooks/use-editor";
-
 export function Sidebar() {
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("structure");
-  const { isToolboxOpen, setToolboxOpen } = useEditor();
+  const { isToolboxOpen, activeCategory } = useEditor();
+  const catId = activeCategory as CategoryId;
+  const catLabel = CATEGORIES.find(c => c.id === catId)?.label || activeCategory;
+
+  if (!isToolboxOpen) return null;
 
   return (
-    <Panel className={`flex h-full shadow-sm bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 overflow-hidden transition-all duration-300 ease-in-out ${isToolboxOpen ? 'w-64' : 'w-16'}`}>
-      {/* Left Column: Navigation */}
-      <CategoryNav 
-        activeId={activeCategory} 
-        onSelect={(id) => {
-            setActiveCategory(id);
-            setToolboxOpen(true);
-        }} 
-      />
+    <Panel className="w-52 flex flex-col h-full shadow-sm bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
+      <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
+          <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+              <span className="text-zinc-400 dark:text-zinc-500 font-normal">Toolbox /</span> 
+              {catLabel}
+          </h2>
+      </div>
       
-      {/* Right Column: Catalog */}
-      <div className={`flex-1 flex flex-col h-full bg-white dark:bg-zinc-900 transition-opacity duration-200 ${isToolboxOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <span className="text-zinc-400 dark:text-zinc-500 font-normal">Toolbox /</span> 
-                {CATEGORIES.find(c => c.id === activeCategory)?.label}
-            </h2>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
-            <div className="grid grid-cols-1 gap-3">
-                <AnimatePresence mode="popLayout">
-                    {TOOLS[activeCategory].map((tool, i) => (
-                        <motion.div
-                            key={`${activeCategory}-${tool.type}-${tool.inputType || 'def'}`}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2, delay: i * 0.05 }}
-                        >
-                            <ToolboxCard data={tool} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
-        </div>
+      <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
+          <div className="grid grid-cols-1 gap-2">
+              <AnimatePresence mode="popLayout">
+                  {TOOLS[catId]?.map((tool, i) => (
+                      <motion.div
+                          key={`${catId}-${tool.type}-${tool.inputType || 'def'}`}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.2, delay: i * 0.05 }}
+                      >
+                          <ToolboxCard data={tool} />
+                      </motion.div>
+                  ))}
+              </AnimatePresence>
+          </div>
       </div>
     </Panel>
   );

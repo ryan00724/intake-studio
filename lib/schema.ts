@@ -163,25 +163,3 @@ export const generateIntakeSchema = z.object({
 });
 
 export type GenerateIntakeResponse = z.infer<typeof generateIntakeSchema>;
-
-// --- AI Routing Generation Schema ---
-
-export const aiRoutingRuleSchema = z.object({
-  id: z.string(),
-  fromBlockId: z.string().optional(),
-  operator: z.enum(["equals", "any"]),
-  value: z.string().optional(),
-  nextSectionId: z.string(),
-});
-
-export const aiSectionRoutingSchema = z.object({
-  sectionId: z.string(),
-  rules: z.array(aiRoutingRuleSchema),
-});
-
-export const generateRoutingSchema = z.object({
-  routing: z.array(aiSectionRoutingSchema),
-  explanation: z.string().optional(),
-});
-
-export type GenerateRoutingResponse = z.infer<typeof generateRoutingSchema>;

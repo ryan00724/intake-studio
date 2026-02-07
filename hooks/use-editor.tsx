@@ -41,6 +41,8 @@ interface EditorContextType extends EditorState {
   togglePreview: () => void;
   isToolboxOpen: boolean;
   setToolboxOpen: (open: boolean) => void;
+  activeCategory: string;
+  setActiveCategory: (id: string) => void;
   validation: FlowValidationResult;
 }
 
@@ -68,6 +70,7 @@ export function EditorProvider({ children, intakeId }: { children: ReactNode; in
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isToolboxOpen, setToolboxOpen] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("structure");
   
   // Persistence state
   const [isSaving, setIsSaving] = useState(false);
@@ -404,6 +407,8 @@ export function EditorProvider({ children, intakeId }: { children: ReactNode; in
         togglePreview,
         isToolboxOpen,
         setToolboxOpen,
+        activeCategory,
+        setActiveCategory,
         validation,
       }}
     >

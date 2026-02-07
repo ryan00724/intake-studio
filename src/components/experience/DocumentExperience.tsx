@@ -1,8 +1,20 @@
 import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { IntakeSection, IntakeBlock, InputType, IntakeTheme } from "@/types/editor";
 import { personalizeText, PersonalizationParams } from "@/src/lib/experience/personalize";
 import { Moodboard } from "@/src/components/shared/Moodboard";
 import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
+
+/** Returns black or white text depending on background luminance */
+function getContrastTextColor(hex: string): string {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const toLinear = (v: number) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return L > 0.4 ? "#000000" : "#ffffff";
+}
 
 interface DocumentExperienceProps {
   sections: IntakeSection[];
@@ -20,8 +32,17 @@ export function DocumentExperience({
   theme,
 }: DocumentExperienceProps) {
   const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | undefined>(undefined);
+  const hasVideoBackground = theme?.background?.type === "video" && Boolean(theme.background.videoUrl);
+  const [videoReady, setVideoReady] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!hasVideoBackground) setVideoReady(true);
+    else setVideoReady(false);
+  }, [hasVideoBackground]);
+
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
+  const cardTextColor = hasCardBackground ? getContrastTextColor(cardBackgroundColor!) : undefined;
   const cardClassName = `${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"} backdrop-blur-md shadow-lg rounded-2xl p-8`;
   const cardStyle: React.CSSProperties | undefined = hasCardBackground
     ? { backgroundColor: cardBackgroundColor }
@@ -61,8 +82,26 @@ export function DocumentExperience({
   }
 
   return (
+    <>
+    <AnimatePresence>
+      {!videoReady && (
+        <motion.div
+          key="video-loader"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black"
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full border-2 border-zinc-700 border-t-white animate-spin" />
+          </div>
+          <p className="mt-4 text-sm text-zinc-500 animate-pulse">Loading experience...</p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
     <div 
-        className="min-h-screen transition-colors duration-300 relative overflow-y-auto" 
+        className={`min-h-screen transition-all duration-700 relative overflow-y-auto ${videoReady ? "opacity-100" : "opacity-0"}`}
         style={{ ...bgStyle, ...containerStyle }}
     >
         {theme?.background?.type === "video" && (resolvedVideoUrl || theme.background.videoUrl) && (
@@ -76,6 +115,7 @@ export function DocumentExperience({
                 crossOrigin="anonymous"
                 className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
                 src={(() => { const u = resolvedVideoUrl || theme?.background?.videoUrl || ""; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
+                onCanPlay={() => setVideoReady(true)}
             />
         )}
         
@@ -106,12 +146,12 @@ export function DocumentExperience({
             <div className={theme?.background?.type !== "none" ? cardClassName : ""} style={theme?.background?.type !== "none" ? cardStyle : undefined}>
                 <header className="space-y-4 text-center mb-8">
                     {title && (
-                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+                    <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50" style={cardTextColor ? { color: cardTextColor } : undefined}>
                         {personalizeText(title, personalization)}
                     </h1>
                     )}
                     {intro && (
-                    <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
+                    <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto" style={cardTextColor ? { color: cardTextColor, opacity: 0.7 } : undefined}>
                         {personalizeText(intro, personalization)}
                     </p>
                     )}
@@ -122,11 +162,11 @@ export function DocumentExperience({
                     {sections.map((section) => (
                     <section key={section.id} className="space-y-6">
                         <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
-                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50" style={{ color: section.style?.color || theme?.accentColor }}>
+                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50" style={{ color: section.style?.color || theme?.accentColor || cardTextColor }}>
                             {personalizeText(section.title, personalization)}
                         </h2>
                         {section.description && (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1" style={cardTextColor ? { color: cardTextColor, opacity: 0.6 } : undefined}>
                             {personalizeText(section.description, personalization)}
                             </p>
                         )}
@@ -153,6 +193,7 @@ export function DocumentExperience({
             </div>
         </div>
     </div>
+    </>
   );
 }
 

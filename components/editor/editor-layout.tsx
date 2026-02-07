@@ -12,11 +12,11 @@ export function EditorLayout() {
 
   return (
     <DndWrapper>
-        <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden p-3 gap-3">
+        <div className="flex h-[calc(100vh-4.25rem)] w-full overflow-hidden px-3 pb-3 gap-3">
             <Sidebar />
             
             <div 
-                className="flex-1 flex flex-col h-full relative overflow-hidden rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800/50 shadow-inner"
+                className="flex-1 flex flex-col h-full relative overflow-hidden rounded-2xl bg-zinc-200/70 dark:bg-zinc-900/50 border border-zinc-300/50 dark:border-zinc-800/50 shadow-inner"
             >
                 <CanvasViewport onBackgroundClick={() => {
                     selectItem(null);
