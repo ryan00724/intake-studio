@@ -9,7 +9,8 @@ import { Textarea } from "@/src/components/ui/Textarea";
 import { Select } from "@/src/components/ui/Select";
 import { Button } from "@/src/components/ui/Button";
 import { Checkbox } from "@/src/components/ui/Checkbox";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { uploadFile } from "@/src/lib/upload";
 
 const INPUT_TYPE_OPTIONS = [
   { label: "Short Text", value: "short" },
@@ -46,6 +47,7 @@ export function PropertiesPanel() {
   const [copied, setCopied] = useState(false);
   const [newMoodboardImageUrl, setNewMoodboardImageUrl] = useState("");
   const [newThisNotThisImageUrl, setNewThisNotThisImageUrl] = useState("");
+  const [uploading, setUploading] = useState<string | null>(null); // tracks which upload is in progress
 
   // Find selection
   let selectedSection: IntakeSection | undefined;
@@ -110,63 +112,67 @@ export function PropertiesPanel() {
     }
   };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                if (ev.target?.result) {
-                    updateMetadata({
-                        theme: {
-                            ...metadata.theme,
-                            background: {
-                                ...metadata.theme?.background,
-                                type: "image",
-                                imageUrl: ev.target.result as string,
-                            }
+            setUploading("background");
+            try {
+                const result = await uploadFile(e.target.files[0], "backgrounds");
+                updateMetadata({
+                    theme: {
+                        ...metadata.theme,
+                        background: {
+                            ...metadata.theme?.background,
+                            type: "image",
+                            imageUrl: result.url,
                         }
-                    });
-                }
-            };
-            reader.readAsDataURL(e.target.files[0]);
+                    }
+                });
+            } catch (err) {
+                console.error("Background upload failed:", err);
+            } finally {
+                setUploading(null);
+            }
         }
     };
 
-    const handleSectionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSectionFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (selectedSection && e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                if (ev.target?.result) {
-                    updateSection(selectedSection.id, {
-                        style: {
-                            ...selectedSection.style,
-                            background: {
-                                ...selectedSection.style?.background,
-                                type: "image",
-                                imageUrl: ev.target.result as string,
-                            }
+            setUploading("section-bg");
+            try {
+                const result = await uploadFile(e.target.files[0], "backgrounds");
+                updateSection(selectedSection.id, {
+                    style: {
+                        ...selectedSection.style,
+                        background: {
+                            ...selectedSection.style?.background,
+                            type: "image",
+                            imageUrl: result.url,
                         }
-                    });
-                }
-            };
-            reader.readAsDataURL(e.target.files[0]);
+                    }
+                });
+            } catch (err) {
+                console.error("Section background upload failed:", err);
+            } finally {
+                setUploading(null);
+            }
         }
     };
 
-    const handleOptionImage = (e: React.ChangeEvent<HTMLInputElement>, optionId: string) => {
+    const handleOptionImage = async (e: React.ChangeEvent<HTMLInputElement>, optionId: string) => {
         if (selectedBlock?.type === "image_choice" && parentSectionId && e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                if (ev.target?.result && selectedBlock) {
-                    // Force React to see this as a fresh update by creating a new array reference first
-                    const currentOptions = [...selectedBlock.options];
-                    // @ts-ignore
-                    const newOptions = currentOptions.map(opt => 
-                        opt.id === optionId ? { ...opt, imageUrl: ev.target!.result as string } : opt
-                    );
-                    updateBlock(parentSectionId, selectedBlock.id, { options: newOptions });
-                }
-            };
-            reader.readAsDataURL(e.target.files[0]);
+            setUploading(`option-${optionId}`);
+            try {
+                const result = await uploadFile(e.target.files[0], "blocks");
+                const currentOptions = [...selectedBlock.options];
+                const newOptions = currentOptions.map(opt => 
+                    opt.id === optionId ? { ...opt, imageUrl: result.url } : opt
+                );
+                updateBlock(parentSectionId, selectedBlock.id, { options: newOptions });
+            } catch (err) {
+                console.error("Option image upload failed:", err);
+            } finally {
+                setUploading(null);
+            }
         }
     };
     // GLOBAL METADATA EDITING (No Selection)
@@ -226,6 +232,17 @@ export function PropertiesPanel() {
                             </div>
                         </div>
                     </div>
+                </Field>
+
+                <Field label="Color Mode" hint="Light or dark appearance when published.">
+                    <Select
+                        value={metadata.colorMode || "light"}
+                        onChange={(val) => updateMetadata({ colorMode: val as "light" | "dark" })}
+                        options={[
+                            { label: "Light", value: "light" },
+                            { label: "Dark", value: "dark" },
+                        ]}
+                    />
                 </Field>
 
                 <Field label="Background Type">
@@ -340,7 +357,8 @@ export function PropertiesPanel() {
                 {metadata.theme?.background?.type === "image" && (
                     <div className="space-y-4">
                         <Field label="Image Upload">
-                            <Input type="file" accept="image/*" onChange={handleFileChange} />
+                            <Input type="file" accept="image/*" onChange={handleFileChange} disabled={uploading === "background"} />
+                            {uploading === "background" && <p className="text-xs text-zinc-400 animate-pulse">Uploading...</p>}
                         </Field>
                         {metadata.theme.background.imageUrl && (
                             <div className="relative w-full h-32 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
@@ -536,20 +554,13 @@ export function PropertiesPanel() {
                             b => (b.type === "question" && b.inputType === "select") || b.type === "image_choice"
                         ) as (QuestionBlock | import("@/types/editor").ImageChoiceBlock)[];
 
-                        if (eligibleQuestions.length === 0) {
-                            return (
-                                <p className="text-xs text-zinc-400 italic">
-                                    Add a "Select Dropdown" or "Image Choice" question to this section to configure conditional routing.
-                                </p>
-                            );
-                        }
-
                         const rules = selectedSection.routing || [];
                         const otherSections = sections.filter(s => s.id !== selectedSection!.id);
 
                         return (
                             <div className="space-y-3">
                                 {rules.map((rule, idx) => {
+                                    const isFallback = rule.operator === "any";
                                     const triggerBlock = eligibleQuestions.find(b => b.id === rule.fromBlockId);
                                     
                                     // Normalize options based on block type
@@ -567,7 +578,7 @@ export function PropertiesPanel() {
                                     }
 
                                     return (
-                                        <div key={rule.id} className="p-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg space-y-3 relative group">
+                                        <div key={rule.id} className={`p-3 border rounded-lg space-y-3 relative group ${isFallback ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700'}`}>
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm"
@@ -581,32 +592,72 @@ export function PropertiesPanel() {
                                             </Button>
 
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                                <label className="text-[10px] font-medium text-zinc-500 uppercase">Rule Type:</label>
                                                 <Select
-                                                    value={rule.fromBlockId}
+                                                    value={isFallback ? "any" : "equals"}
                                                     onChange={(val) => {
                                                         const newRules = [...rules];
-                                                        newRules[idx] = { ...rule, fromBlockId: val, value: "" }; // Reset value on change
+                                                        if (val === "any") {
+                                                            // Check uniqueness for fallback
+                                                            if (rules.some(r => r.operator === "any" && r.id !== rule.id)) {
+                                                                alert("Only one fallback route is allowed.");
+                                                                return;
+                                                            }
+                                                            newRules[idx] = { ...rule, operator: "any", fromBlockId: undefined, value: undefined };
+                                                        } else {
+                                                            // Switching to equals
+                                                            if (eligibleQuestions.length === 0) return;
+                                                            newRules[idx] = { 
+                                                                ...rule, 
+                                                                operator: "equals", 
+                                                                fromBlockId: eligibleQuestions[0].id, 
+                                                                value: "" 
+                                                            };
+                                                        }
                                                         updateSection(selectedSection!.id, { routing: newRules });
                                                     }}
-                                                    options={eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))}
+                                                    options={[
+                                                        ...(eligibleQuestions.length > 0 ? [{ label: "Match Answer", value: "equals" }] : []),
+                                                        { label: "Fallback / Any", value: "any" }
+                                                    ]}
                                                 />
                                             </div>
 
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-medium text-zinc-400">Is</span>
-                                                <div className="flex-1">
-                                                    <Select
-                                                        value={rule.value}
-                                                        onChange={(val) => {
-                                                            const newRules = [...rules];
-                                                            newRules[idx] = { ...rule, value: val };
-                                                            updateSection(selectedSection!.id, { routing: newRules });
-                                                        }}
-                                                        options={options}
-                                                    />
+                                            {isFallback ? (
+                                                <div className="text-xs text-blue-600 dark:text-blue-400 py-1">
+                                                    Routes here if no other conditions match.
                                                 </div>
-                                            </div>
+                                            ) : (
+                                                <>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                                        <Select
+                                                            value={rule.fromBlockId || ""}
+                                                            onChange={(val) => {
+                                                                const newRules = [...rules];
+                                                                newRules[idx] = { ...rule, fromBlockId: val, value: "" }; // Reset value on change
+                                                                updateSection(selectedSection!.id, { routing: newRules });
+                                                            }}
+                                                            options={eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))}
+                                                        />
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-medium text-zinc-400">Is</span>
+                                                        <div className="flex-1">
+                                                            <Select
+                                                                value={rule.value || ""}
+                                                                onChange={(val) => {
+                                                                    const newRules = [...rules];
+                                                                    newRules[idx] = { ...rule, value: val };
+                                                                    updateSection(selectedSection!.id, { routing: newRules });
+                                                                }}
+                                                                options={options}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
 
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-medium text-zinc-500 uppercase">Go To Section:</label>
@@ -628,18 +679,37 @@ export function PropertiesPanel() {
                                     variant="secondary"
                                     className="w-full text-xs"
                                     onClick={() => {
-                                        const newRule = {
-                                            id: generateId(),
-                                            fromBlockId: eligibleQuestions[0]?.id || "", // Safe access
-                                            operator: "equals" as const,
-                                            value: "",
-                                            nextSectionId: otherSections[0]?.id || ""
-                                        };
-                                        if (newRule.fromBlockId) {
-                                            updateSection(selectedSection!.id, { routing: [...rules, newRule] });
+                                        let newRule: import("@/types/editor").SectionRouteRule;
+                                        const fallbackExists = rules.some(r => r.operator === "any");
+
+                                        // Default to equals if questions exist, otherwise any
+                                        // But if questions exist, we can also add any. 
+                                        // Let's default to equals if possible, as it's more common for "Logic".
+                                        // Unless user wants fallback.
+                                        
+                                        if (eligibleQuestions.length > 0) {
+                                            newRule = {
+                                                id: generateId(),
+                                                fromBlockId: eligibleQuestions[0].id,
+                                                operator: "equals",
+                                                value: "",
+                                                nextSectionId: otherSections[0]?.id || ""
+                                            };
+                                        } else {
+                                            if (fallbackExists) {
+                                                alert("This section already has a fallback route. No other rules can be added without questions.");
+                                                return;
+                                            }
+                                            newRule = {
+                                                id: generateId(),
+                                                operator: "any",
+                                                nextSectionId: otherSections[0]?.id || ""
+                                            };
                                         }
+                                        
+                                        updateSection(selectedSection!.id, { routing: [...rules, newRule] });
                                     }}
-                                    disabled={otherSections.length === 0 || eligibleQuestions.length === 0}
+                                    disabled={otherSections.length === 0}
                                 >
                                     + Add Routing Rule
                                 </Button>
@@ -754,7 +824,8 @@ export function PropertiesPanel() {
                     {selectedSection.style?.background?.type === "image" && (
                         <div className="space-y-4">
                             <Field label="Image Upload">
-                                <Input type="file" accept="image/*" onChange={handleSectionFileChange} />
+                                <Input type="file" accept="image/*" onChange={handleSectionFileChange} disabled={uploading === "section-bg"} />
+                                {uploading === "section-bg" && <p className="text-xs text-zinc-400 animate-pulse">Uploading...</p>}
                             </Field>
                             {selectedSection.style.background.imageUrl && (
                                 <div className="relative w-full h-32 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
@@ -850,14 +921,9 @@ export function PropertiesPanel() {
                             b => (b.type === "question" && b.inputType === "select") || b.type === "image_choice"
                         ) as (QuestionBlock | import("@/types/editor").ImageChoiceBlock)[];
 
-                        if (!eligibleQuestions || eligibleQuestions.length === 0) {
-                            return (
-                                <p className="text-xs text-zinc-400 italic">
-                                    No compatible questions found in source section to create a condition.
-                                </p>
-                            );
-                        }
-
+                        // For fallback, we don't strictly need questions, but we check if we want to allow switching types
+                        // Currently logic assumes we need questions for "equals"
+                        
                         const selectedQuestionId = selectedEdge.condition?.fromBlockId;
                         const triggerBlock = eligibleQuestions.find(b => b.id === selectedQuestionId);
                         
@@ -875,46 +941,100 @@ export function PropertiesPanel() {
                             }));
                         }
 
+                        const isFallback = selectedEdge.condition?.operator === "any";
+
                         return (
                             <div className="space-y-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                    <label className="text-[10px] font-medium text-zinc-500 uppercase">Condition Type:</label>
                                     <Select
-                                        value={selectedQuestionId || ""}
+                                        value={isFallback ? "any" : "equals"}
                                         onChange={(val) => {
-                                            if (updateRouting) {
+                                            if (!updateRouting) return;
+                                            
+                                            if (val === "any") {
+                                                // Check if another fallback already exists
+                                                const existingFallback = sourceSection?.routing?.find(r => r.operator === "any" && r.id !== selectedEdge!.id);
+                                                if (existingFallback) {
+                                                    alert("This section already has a fallback route. Only one is allowed.");
+                                                    return;
+                                                }
+
                                                 updateRouting(parentSectionId!, selectedEdge!.id, { 
-                                                    fromBlockId: val,
-                                                    // Reset value when changing question
-                                                    value: "" 
+                                                    operator: "any",
+                                                    fromBlockId: undefined, // Clear block reference
+                                                    value: undefined        // Clear value reference
+                                                });
+                                            } else {
+                                                // Switching to equals - try to auto-select first eligible question
+                                                updateRouting(parentSectionId!, selectedEdge!.id, { 
+                                                    operator: "equals",
+                                                    fromBlockId: eligibleQuestions[0]?.id || "",
+                                                    value: ""
                                                 });
                                             }
                                         }}
                                         options={[
-                                            { label: "Select a question...", value: "" },
-                                            ...eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))
+                                            { label: "Match Answer", value: "equals" },
+                                            { label: "Any (Fallback)", value: "any" }
                                         ]}
                                     />
                                 </div>
 
-                                {selectedQuestionId && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium text-zinc-400">Is</span>
-                                        <div className="flex-1">
-                                            <Select
-                                                value={selectedEdge.condition?.value || ""}
-                                                onChange={(val) => {
-                                                    if (updateRouting) {
-                                                        updateRouting(parentSectionId!, selectedEdge!.id, { value: val });
-                                                    }
-                                                }}
-                                                options={[
-                                                    { label: "Select an option...", value: "" },
-                                                    ...options
-                                                ]}
-                                            />
-                                        </div>
+                                {isFallback ? (
+                                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-lg border border-blue-100 dark:border-blue-800">
+                                        This path will be taken if no other conditions match.
                                     </div>
+                                ) : (
+                                    <>
+                                        {!eligibleQuestions || eligibleQuestions.length === 0 ? (
+                                            <p className="text-xs text-zinc-400 italic">
+                                                No compatible questions found in source section to create a condition.
+                                            </p>
+                                        ) : (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <label className="text-[10px] font-medium text-zinc-500 uppercase">If Answer To:</label>
+                                                    <Select
+                                                        value={selectedQuestionId || ""}
+                                                        onChange={(val) => {
+                                                            if (updateRouting) {
+                                                                updateRouting(parentSectionId!, selectedEdge!.id, { 
+                                                                    fromBlockId: val,
+                                                                    // Reset value when changing question
+                                                                    value: "" 
+                                                                });
+                                                            }
+                                                        }}
+                                                        options={[
+                                                            { label: "Select a question...", value: "" },
+                                                            ...eligibleQuestions.map(q => ({ label: q.label || "Untitled Question", value: q.id }))
+                                                        ]}
+                                                    />
+                                                </div>
+
+                                                {selectedQuestionId && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-medium text-zinc-400">Is</span>
+                                                        <div className="flex-1">
+                                                            <Select
+                                                                value={selectedEdge.condition?.value || ""}
+                                                                onChange={(val) => {
+                                                                    if (updateRouting) {
+                                                                        updateRouting(parentSectionId!, selectedEdge!.id, { value: val });
+                                                                    }
+                                                                }}
+                                                                options={[
+                                                                    { label: "Select an option...", value: "" },
+                                                                    ...options
+                                                                ]}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </>
                                 )}
 
                                 <div className="pt-2">
@@ -923,10 +1043,6 @@ export function PropertiesPanel() {
                                         size="sm" 
                                         className="w-full text-zinc-400 hover:text-red-500"
                                         onClick={() => {
-                                            // Clear condition (make unconditional? or delete routing rule?)
-                                            // Since this is a routing rule edge, deleting condition might mean removing the rule
-                                            // or just removing the condition properties.
-                                            // For now, let's allow deleting the rule entirely via this panel
                                             if (removeRouting) {
                                                 removeRouting(parentSectionId!, selectedEdge!.id);
                                                 selectItem(null);
@@ -1082,8 +1198,12 @@ export function PropertiesPanel() {
                                         </div>
                                         
                                         <div className="flex gap-3">
-                                            <label className="relative w-16 h-16 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:opacity-80 transition-opacity shrink-0">
-                                                {opt.imageUrl ? (
+                                            <label className={`relative w-16 h-16 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:opacity-80 transition-opacity shrink-0 ${uploading === "option-" + opt.id ? "opacity-50 pointer-events-none" : ""}`}>
+                                                {uploading === `option-${opt.id}` ? (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <svg className="animate-spin w-5 h-5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle className="opacity-25" cx="12" cy="12" r="10"/><path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                    </div>
+                                                ) : opt.imageUrl ? (
                                                     <img src={opt.imageUrl} className="w-full h-full object-cover" alt="Preview" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-zinc-300">
@@ -1283,6 +1403,92 @@ export function PropertiesPanel() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Link Preview Block */}
+                {selectedBlock.type === "link_preview" && (
+                    <>
+                        <Field label="Label">
+                            <Input
+                                value={selectedBlock.label}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { label: e.target.value })}
+                            />
+                        </Field>
+                        <Field label="Helper Text">
+                            <Input
+                                value={selectedBlock.helperText || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { helperText: e.target.value })}
+                            />
+                        </Field>
+                        <Field label="Max Links (Optional)">
+                            <Input
+                                type="number"
+                                value={selectedBlock.maxItems?.toString() || ""}
+                                onChange={(e) => {
+                                    const val = e.target.value ? parseInt(e.target.value) : undefined;
+                                    updateBlock(parentSectionId!, selectedBlock!.id, { maxItems: val });
+                                }}
+                                placeholder="Default: 3"
+                            />
+                        </Field>
+                        <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <Checkbox
+                                checked={selectedBlock.required || false}
+                                onCheckedChange={(checked) => updateBlock(parentSectionId!, selectedBlock!.id, { required: checked })}
+                                label="Required field"
+                            />
+                        </div>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 text-xs rounded-lg border border-blue-100 dark:border-blue-800">
+                            Clients will paste links in the published experience. Preview cards are generated automatically.
+                        </div>
+                    </>
+                )}
+
+                {/* Book Call Block */}
+                {selectedBlock.type === "book_call" && (
+                    <>
+                        <Field label="Title (Optional)">
+                            <Input
+                                value={selectedBlock.title || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { title: e.target.value })}
+                                placeholder="Ready to chat?"
+                            />
+                        </Field>
+                        <Field label="Description (Optional)">
+                            <Textarea
+                                value={selectedBlock.text || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { text: e.target.value })}
+                                rows={2}
+                                placeholder="Book a quick call to discuss your project..."
+                            />
+                        </Field>
+                        <Field label="Booking URL" hint="Required. Must be a valid https:// link.">
+                            <Input
+                                value={selectedBlock.bookingUrl || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { bookingUrl: e.target.value })}
+                                placeholder="https://calendly.com/..."
+                            />
+                        </Field>
+                        <Field label="Button Label">
+                            <Input
+                                value={selectedBlock.buttonLabel || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { buttonLabel: e.target.value })}
+                                placeholder="Book a Call"
+                            />
+                        </Field>
+                        <div className="space-y-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <Checkbox
+                                checked={selectedBlock.openInNewTab ?? true}
+                                onCheckedChange={(checked) => updateBlock(parentSectionId!, selectedBlock!.id, { openInNewTab: checked })}
+                                label="Open in new tab"
+                            />
+                            <Checkbox
+                                checked={selectedBlock.requiredToContinue || false}
+                                onCheckedChange={(checked) => updateBlock(parentSectionId!, selectedBlock!.id, { requiredToContinue: checked })}
+                                label="Must click to continue"
+                            />
                         </div>
                     </>
                 )}

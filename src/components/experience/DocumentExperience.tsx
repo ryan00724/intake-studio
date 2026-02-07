@@ -286,6 +286,43 @@ function BlockRenderer({
       );
   }
 
+  if (block.type === "link_preview") {
+    const label = personalizeText(block.label, personalization);
+    const helperText = personalizeText(block.helperText, personalization);
+    return (
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
+          {label}
+          {block.required && <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">Required</span>}
+        </label>
+        {helperText && <p className="text-sm text-zinc-500 dark:text-zinc-400">{helperText}</p>}
+        <div className="flex items-center gap-2 p-3 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-400 text-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Paste URLs to add link previews
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === "book_call") {
+    const title = block.title ? personalizeText(block.title, personalization) : undefined;
+    const text = block.text ? personalizeText(block.text, personalization) : undefined;
+    return (
+      <div className="p-6 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-800/50 dark:to-zinc-900 text-center space-y-3">
+        {title && <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>}
+        {text && <p className="text-sm text-zinc-500 dark:text-zinc-400">{text}</p>}
+        <button
+          onClick={() => block.bookingUrl && window.open(block.bookingUrl, block.openInNewTab !== false ? "_blank" : "_self")}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all"
+          style={{ backgroundColor: accentColor || "#16a34a" }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          {block.buttonLabel || "Book a Call"}
+        </button>
+      </div>
+    );
+  }
+
   return null;
 }
 

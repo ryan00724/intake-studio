@@ -1,12 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useRef } from "react";
 import { EditorState, IntakeSection, IntakeBlock, IntakeMetadata, PublishedIntake } from "@/types/editor";
 import { INITIAL_SECTIONS, generateId } from "@/lib/constants";
 import { storePublishedInIdb, PublishedPointer } from "@/lib/published-storage";
 import { validateFlow, FlowValidationResult } from "@/src/lib/flow-validation";
 
 interface EditorContextType extends EditorState {
+  intakeId?: string;
+  isSaving: boolean;
+  lastSaved?: Date;
+  
   // Section actions
   addSection: (index?: number) => void;
   updateSection: (id: string, updates: Partial<IntakeSection>) => void;
@@ -46,51 +50,119 @@ const STORAGE_KEY = "intake-studio-state-v3";
 const PUBLISHED_KEY_PREFIX = "published_intake_";
 const PUBLISHED_KEY = "intake:published:";
 
-export function EditorProvider({ children }: { children: ReactNode }) {
+export function EditorProvider({ children, intakeId }: { children: ReactNode; intakeId?: string }) {
   const [sections, setSections] = useState<IntakeSection[]>([]);
-  const [metadata, setMetadata] = useState<IntakeMetadata>({ title: "Untitled Intake", mode: "guided" });
+  const [metadata, setMetadata] = useState<IntakeMetadata>({ 
+    title: "Untitled Intake", 
+    mode: "guided",
+    theme: {
+      accentColor: "#3b82f6",
+      background: {
+        type: "color",
+        color: "#3b82f6",
+      }
+    }
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [edges, setEdges] = useState<any[]>([]); // Placeholder for edges, logic to be added
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isToolboxOpen, setToolboxOpen] = useState(true);
+  
+  // Persistence state
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | undefined>(undefined);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Compute validation
   const validation = useMemo(() => validateFlow(sections), [sections]);
 
-  // Load from localStorage
+  // Load Initial State
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Handle migration from v2 (array) to v3 (object)
-        if (Array.isArray(parsed)) {
-             setSections(parsed);
-             setMetadata({ title: "Untitled Intake", mode: "guided" });
-        } else if (parsed.sections) {
-             setSections(parsed.sections);
-             setMetadata(parsed.metadata || { title: "Untitled Intake", mode: "guided" });
-        } else {
-             setSections(INITIAL_SECTIONS);
+    async function load() {
+      if (intakeId) {
+        // Load from DB (no auth required for now)
+        try {
+          const res = await fetch(`/api/intakes/${intakeId}`);
+          
+          if (!res.ok) throw new Error("Failed to load intake");
+          
+          const intake = await res.json();
+          const draft = intake.draft_json || {};
+          
+          if (draft.sections) setSections(draft.sections);
+          else setSections(INITIAL_SECTIONS);
+          
+          if (draft.metadata) setMetadata(draft.metadata);
+          else setMetadata(prev => ({ ...prev, title: intake.title, slug: intake.slug }));
+          
+        } catch (err) {
+          console.error("Error loading intake:", err);
+          setSections(INITIAL_SECTIONS);
         }
-      } catch (e) {
-        console.error("Failed to parse editor state", e);
-        setSections(INITIAL_SECTIONS);
+      } else {
+        // Load from LocalStorage (Legacy / Anon)
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                setSections(parsed);
+                setMetadata(prev => ({ ...prev, title: "Untitled Intake" }));
+            } else if (parsed.sections) {
+                setSections(parsed.sections);
+                setMetadata(parsed.metadata || { title: "Untitled Intake", mode: "guided" });
+            } else {
+                setSections(INITIAL_SECTIONS);
+            }
+          } catch (e) {
+            console.error("Failed to parse editor state", e);
+            setSections(INITIAL_SECTIONS);
+          }
+        } else {
+          setSections(INITIAL_SECTIONS);
+        }
       }
-    } else {
-      setSections(INITIAL_SECTIONS);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
-  }, []);
+    
+    load();
+  }, [intakeId]);
 
-  // Save to localStorage
+  // Save State (Debounced)
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ sections, metadata }));
+    if (!isLoaded) return;
+
+    // LocalStorage (always sync for backup/anon)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sections, metadata }));
+
+    // DB Save
+    if (intakeId) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      setIsSaving(true);
+      
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          const payload = {
+              draft_json: { sections, metadata, edges },
+              title: metadata.title,
+              slug: metadata.slug,
+          };
+          
+          await fetch(`/api/intakes/${intakeId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+          });
+          setLastSaved(new Date());
+        } catch (err) {
+          console.error("Auto-save failed:", err);
+        } finally {
+          setIsSaving(false);
+        }
+      }, 1500); // 1.5s debounce
     }
-  }, [sections, metadata, isLoaded]);
+  }, [sections, metadata, edges, isLoaded, intakeId]);
 
   const addSection = (index?: number) => {
     const newSection: IntakeSection = {
@@ -254,18 +326,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       const publishedData: PublishedIntake = {
           slug,
           sections,
-          edges, // Include edges if you have them in state (currently we use section.routing as source of truth for now, but if we migrate fully to edges state, we pass it here)
-          // Since edges state is currently a placeholder, and we derive edges from section.routing, we might want to normalize it before publishing or just stick to sections for now if edges are not fully populated.
-          // However, the request implies we should pass edges. 
-          // If edges state is empty, maybe we should derive them?
-          // But getOutgoingRoutes is a read helper.
-          // For now, let's pass the edges state even if empty, assuming future migration.
-          // Or better: if edges state is empty but sections have routing, we can optionally populate edges here.
-          // But the goal is just "pass edges from published data". So we just include the field.
+          edges,
           metadata: { ...metadata, slug, publishedAt: new Date().toISOString() },
           publishedAt: Date.now()
       };
       
+      // 1. Local Persistence (Legacy / Offline)
       // Save specific published version
       const payload = JSON.stringify(publishedData);
       const primaryKey = `${PUBLISHED_KEY}${slug}`;
@@ -283,12 +349,20 @@ export function EditorProvider({ children }: { children: ReactNode }) {
                   await storePublishedInIdb(primaryKey, publishedData);
               } catch (retryError) {
                   console.error("Failed to publish intake: storage quota exceeded", retryError);
-                  alert("Publish failed: storage quota exceeded. Try removing large images or fewer image choices.");
+                  alert("Publish failed: storage quota exceeded.");
                   return "";
               }
-          } else {
-              console.error("Failed to publish intake", error);
-              return "";
+          }
+      }
+
+      // 2. DB Persistence (no auth required for now)
+      if (intakeId) {
+          try {
+              await fetch(`/api/intakes/${intakeId}/publish`, {
+                  method: "POST",
+              });
+          } catch (err) {
+              console.error("Failed to publish to DB:", err);
           }
       }
       
@@ -308,6 +382,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         sections,
         metadata,
         selectedId,
+        intakeId,
+        isSaving,
+        lastSaved,
         addSection,
         updateSection,
         removeSection,

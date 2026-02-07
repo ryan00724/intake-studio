@@ -67,6 +67,7 @@ export function validateFlow(sections: IntakeSection[]): FlowValidationResult {
   
   sections.forEach(section => {
     if (section.routing && section.routing.length > 0) {
+      let anyCount = 0;
       section.routing.forEach(rule => {
         const target = rule.nextSectionId;
         if (sectionIds.has(target)) {
@@ -74,7 +75,10 @@ export function validateFlow(sections: IntakeSection[]): FlowValidationResult {
           incomingEdges[target].push(section.id);
 
           // 4. Conditional Integrity
-          if (rule.fromBlockId) {
+          if (rule.operator === "any") {
+              anyCount++;
+          } else if (rule.fromBlockId) {
+            // Existing equals check
             const block = section.blocks.find(b => b.id === rule.fromBlockId);
             if (!block) {
               errors.push({
@@ -102,7 +106,7 @@ export function validateFlow(sections: IntakeSection[]): FlowValidationResult {
                    options = (block as QuestionBlock).options || [];
                 }
                 
-                if (!options.includes(rule.value)) {
+                if (rule.value && !options.includes(rule.value)) {
                    errors.push({
                     type: "error",
                     message: `Routing condition value '${rule.value}' does not exist in options.`,
@@ -115,7 +119,58 @@ export function validateFlow(sections: IntakeSection[]): FlowValidationResult {
           }
         }
       });
+
+      if (anyCount > 1) {
+          errors.push({
+              type: "error",
+              message: `Section has ${anyCount} fallback ('any') routes. Only one is allowed.`,
+              sectionId: section.id
+          });
+      }
     }
+  });
+
+  // 1b. Block integrity checks
+  sections.forEach(section => {
+    const sectionLabel = section.title || "Untitled Section";
+    section.blocks.forEach(block => {
+      // book_call: must have valid http/https booking URL
+      if (block.type === "book_call") {
+        if (!block.bookingUrl) {
+          errors.push({
+            type: "error",
+            message: `"Book a Call" block in "${sectionLabel}" is missing a booking URL.`,
+            sectionId: section.id,
+            blockId: block.id,
+          });
+        } else {
+          try {
+            const u = new URL(block.bookingUrl);
+            if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error();
+          } catch {
+            errors.push({
+              type: "error",
+              message: `"Book a Call" block in "${sectionLabel}" has an invalid URL. Must be http:// or https://.`,
+              sectionId: section.id,
+              blockId: block.id,
+            });
+          }
+        }
+      }
+
+      // link_preview: no publish-time errors needed (clients provide links at runtime).
+      // Only warn if maxItems is set to 0 (likely a config mistake).
+      if (block.type === "link_preview") {
+        if (block.maxItems !== undefined && block.maxItems <= 0) {
+          warnings.push({
+            type: "warning",
+            message: `"Link Preview" block in "${sectionLabel}" has max links set to ${block.maxItems}.`,
+            sectionId: section.id,
+            blockId: block.id,
+          });
+        }
+      }
+    });
   });
 
   // 2. Start Sections (In-degree 0)

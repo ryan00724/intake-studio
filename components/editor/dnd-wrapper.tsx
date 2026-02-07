@@ -114,10 +114,10 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
             label: activeData.section.title,
             data: activeData.section
         });
-    } else if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context") {
+    } else if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context" || activeData?.type === "link_preview" || activeData?.type === "book_call") {
         setActiveDragItem({
             type: activeData.block.type,
-            label: activeData.block.label || "Block",
+            label: activeData.block.label || activeData.block.title || "Block",
             data: activeData.block
         });
     }
@@ -198,6 +198,21 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
                         label: activeData.label,
                         items: [],
                     };
+                 } else if (activeData.type === "link_preview") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "link_preview",
+                        label: activeData.label || "Link Preview",
+                        maxItems: 3,
+                    };
+                 } else if (activeData.type === "book_call") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "book_call",
+                        bookingUrl: "",
+                        buttonLabel: "Book a Call",
+                        openInNewTab: true,
+                    };
                  } else {
                     newBlock = { 
                         id: generateId(), 
@@ -242,7 +257,7 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
         return;
     }
 
-    if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context") {
+    if (activeData?.type === "block" || activeData?.type === "question" || activeData?.type === "image_choice" || activeData?.type === "image_moodboard" || activeData?.type === "this_not_this" || activeData?.type === "context" || activeData?.type === "link_preview" || activeData?.type === "book_call") {
         const activeSectionId = findSectionContainer(active.id as string);
         let overSectionId = findSectionContainer(over.id as string);
         

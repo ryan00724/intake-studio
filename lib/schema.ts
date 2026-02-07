@@ -10,7 +10,7 @@ export const inputTypeSchema = z.enum([
   "file",
 ]);
 
-export const blockTypeSchema = z.enum(["context", "question", "image_choice", "image_moodboard", "this_not_this"]);
+export const blockTypeSchema = z.enum(["context", "question", "image_choice", "image_moodboard", "this_not_this", "link_preview", "book_call"]);
 
 export const baseBlockSchema = z.object({
   id: z.string(),
@@ -92,19 +92,48 @@ export const thisNotThisBlockSchema = baseBlockSchema.extend({
   items: z.array(thisNotThisItemSchema),
 });
 
+export const linkPreviewBlockSchema = baseBlockSchema.extend({
+  type: z.literal("link_preview"),
+  label: z.string(),
+  helperText: z.string().optional(),
+  required: z.boolean().optional(),
+  maxItems: z.number().optional(),
+});
+
+export const bookCallBlockSchema = baseBlockSchema.extend({
+  type: z.literal("book_call"),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  bookingUrl: z.string(),
+  buttonLabel: z.string().optional(),
+  openInNewTab: z.boolean().optional(),
+  requiredToContinue: z.boolean().optional(),
+});
+
 export const intakeBlockSchema = z.discriminatedUnion("type", [
   contextBlockSchema,
   questionBlockSchema,
   imageChoiceBlockSchema,
   imageMoodboardBlockSchema,
   thisNotThisBlockSchema,
+  linkPreviewBlockSchema,
+  bookCallBlockSchema,
 ]);
+
+export const sectionRouteRuleSchema = z.object({
+  id: z.string(),
+  fromBlockId: z.string().optional(),
+  operator: z.enum(["equals", "any"]),
+  value: z.string().optional(),
+  nextSectionId: z.string(),
+});
 
 export const intakeSectionSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().optional(),
   blocks: z.array(intakeBlockSchema),
+  routing: z.array(sectionRouteRuleSchema).optional(),
 });
 
 export const intakeThemeSchema = z.object({
@@ -134,3 +163,25 @@ export const generateIntakeSchema = z.object({
 });
 
 export type GenerateIntakeResponse = z.infer<typeof generateIntakeSchema>;
+
+// --- AI Routing Generation Schema ---
+
+export const aiRoutingRuleSchema = z.object({
+  id: z.string(),
+  fromBlockId: z.string().optional(),
+  operator: z.enum(["equals", "any"]),
+  value: z.string().optional(),
+  nextSectionId: z.string(),
+});
+
+export const aiSectionRoutingSchema = z.object({
+  sectionId: z.string(),
+  rules: z.array(aiRoutingRuleSchema),
+});
+
+export const generateRoutingSchema = z.object({
+  routing: z.array(aiSectionRoutingSchema),
+  explanation: z.string().optional(),
+});
+
+export type GenerateRoutingResponse = z.infer<typeof generateRoutingSchema>;

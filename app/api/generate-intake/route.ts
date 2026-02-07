@@ -65,7 +65,13 @@ export async function POST(req: NextRequest) {
          - MUST include at least 2-4 items/options
          - Use valid placeholder image URLs (e.g. "https://placehold.co/400?text=Style+1")
       8. Ensure all IDs are non-empty strings (generate random short strings like "sec_1", "blk_a").
-      9. NO routing fields, NO edges keys. Purely linear JSON structure.
+      9. ROUTING: Include a "routing" array on sections that should branch or connect to non-linear sections.
+         Each routing rule is: { "id": "rule_X", "operator": "equals" | "any", "fromBlockId": "block id (for equals)", "value": "option value (for equals)", "nextSectionId": "target section id" }
+         - Use "equals" when a select/image_choice question drives the branch. value must be an actual option string (for select) or option id (for image_choice).
+         - Use "any" as a fallback/unconditional route (omit fromBlockId and value).
+         - Sections that logically end the flow should have NO routing (they lead to completion).
+         - At most ONE "any" rule per section.
+         - Every non-terminal section should have at least one routing rule.
 
       SCHEMA STRUCTURE:
       {
@@ -119,6 +125,20 @@ export async function POST(req: NextRequest) {
                 "items": [
                    { "id": "string", "imageUrl": "https://...", "caption": "Caption" }
                 ]
+              }
+            ],
+            "routing": [
+              {
+                "id": "rule_1",
+                "operator": "equals",
+                "fromBlockId": "block_id_of_select_question",
+                "value": "Option 1",
+                "nextSectionId": "target_section_id"
+              },
+              {
+                "id": "rule_2",
+                "operator": "any",
+                "nextSectionId": "fallback_section_id"
               }
             ]
           }

@@ -17,14 +17,39 @@ export default function PublishedIntakePage() {
 
   useEffect(() => {
     let isMounted = true;
+
     const load = async () => {
       if (!slug) return;
+
+      // 1. Try fetching from DB API first
+      try {
+        const res = await fetch(`/api/public/intakes/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.published_json && isMounted) {
+            // Normalize DB response into the PublishedIntake shape
+            const published: PublishedIntake = {
+              slug,
+              sections: data.published_json.sections || [],
+              edges: data.published_json.edges || [],
+              metadata: data.published_json.metadata || { title: data.title },
+              publishedAt: Date.now(),
+            };
+            setIntake(published);
+            return; // Found in DB, done
+          }
+        }
+      } catch (err) {
+        console.warn("DB fetch failed, falling back to localStorage", err);
+      }
+
+      // 2. Fallback to localStorage / IndexedDB
       const key = `intake:published:${slug}`;
       const fallbackKey = `published_intake_${slug}`;
-      const data = localStorage.getItem(key) || localStorage.getItem(fallbackKey);
-      if (data) {
+      const localData = localStorage.getItem(key) || localStorage.getItem(fallbackKey);
+      if (localData) {
         try {
-          const parsed = JSON.parse(data);
+          const parsed = JSON.parse(localData);
           if (parsed && typeof parsed === "object" && (parsed as PublishedPointer).__storage === "idb") {
             const idbData = await loadPublishedFromIdb((parsed as PublishedPointer).key);
             if (idbData && isMounted) setIntake(idbData);
@@ -32,13 +57,15 @@ export default function PublishedIntakePage() {
             if (isMounted) setIntake(parsed);
           }
         } catch (e) {
-          console.error("Failed to load published intake", e);
+          console.error("Failed to load published intake from localStorage", e);
         }
       }
     };
+
     load().finally(() => {
       if (isMounted) setLoading(false);
     });
+
     return () => {
       isMounted = false;
     };
@@ -67,11 +94,14 @@ export default function PublishedIntakePage() {
       project: searchParams?.get("project") || undefined
   };
 
+  const isDark = intake.metadata.colorMode === "dark";
+
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 font-sans">
+    <div className={`min-h-screen font-sans ${isDark ? 'dark bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
        <GuidedExperience 
           sections={intake.sections}
-          edges={(intake as any).edges} // Pass edges if available in published data
+          edges={(intake as any).edges}
+          slug={intake.metadata?.slug || slug}
           title={intake.metadata.title}
           intro={intake.metadata.description}
           estimatedTime={intake.metadata.estimatedTime}

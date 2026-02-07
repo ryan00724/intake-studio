@@ -2,17 +2,15 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EditorProvider, useEditor } from "@/hooks/use-editor";
 import { Button } from "@/src/components/ui/Button";
 import { Textarea } from "@/src/components/ui/Textarea";
 import { Select } from "@/src/components/ui/Select";
 import { Card } from "@/src/components/ui/Card";
 import { motion } from "framer-motion";
-import { GenerateIntakeResponse } from "@/lib/schema";
+import Link from "next/link";
 
-function AICreationContent() {
+export default function AICreationPage() {
   const router = useRouter();
-  const { setSections, updateMetadata } = useEditor();
   const [description, setDescription] = useState("");
   const [type, setType] = useState("Discovery");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,28 +23,70 @@ function AICreationContent() {
     setError(null);
 
     try {
-      const response = await fetch("/api/generate-intake", {
+      // 1. Generate intake content via AI
+      const genRes = await fetch("/api/generate-intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description, type }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!genRes.ok) {
+        const errorData = await genRes.json();
         throw new Error(errorData.error || "Failed to generate intake");
       }
 
-      const data: GenerateIntakeResponse = await response.json();
+      const data = await genRes.json();
 
-      // Load into editor state
-      setSections(data.sections);
-      updateMetadata(data.metadata);
+      // 2. Get or create a workspace via server API
+      let workspaceId: string | null = null;
+      const wsRes = await fetch("/api/workspaces");
+      const wsData = wsRes.ok ? await wsRes.json() : null;
 
-      // Redirect to editor
-      router.push("/");
+      if (wsData?.id) {
+        workspaceId = wsData.id;
+      } else {
+        const createWsRes = await fetch("/api/workspaces", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "My Workspace" }),
+        });
+        if (!createWsRes.ok) throw new Error("Could not create workspace");
+        const newWs = await createWsRes.json();
+        workspaceId = newWs.id;
+      }
+
+      // 3. Create intake in DB
+      const title = data.metadata?.title || "AI Generated Intake";
+      const createRes = await fetch("/api/intakes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          workspace_id: workspaceId,
+        }),
+      });
+
+      if (!createRes.ok) throw new Error("Failed to create intake");
+      const newIntake = await createRes.json();
+
+      // 4. Save generated content as draft
+      await fetch(`/api/intakes/${newIntake.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft_json: {
+            sections: data.sections,
+            metadata: data.metadata,
+            edges: [],
+          },
+          title,
+        }),
+      });
+
+      // 5. Redirect to editor
+      router.push(`/e/${newIntake.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -141,22 +181,14 @@ function AICreationContent() {
         </Card>
         
         <div className="mt-6 text-center">
-            <button 
-                onClick={() => router.push("/")}
+            <Link 
+                href="/dashboard"
                 className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"
             >
-                Cancel and return to editor
-            </button>
+                Back to Dashboard
+            </Link>
         </div>
       </motion.div>
     </div>
-  );
-}
-
-export default function AICreationPage() {
-  return (
-    <EditorProvider>
-      <AICreationContent />
-    </EditorProvider>
   );
 }

@@ -18,7 +18,10 @@ import {
   Calendar,
   SlidersHorizontal,
   CheckSquare,
-  Upload
+  Upload,
+  Link,
+  Phone,
+  Briefcase
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BlockType, InputType } from "@/types/editor";
@@ -30,6 +33,7 @@ const CATEGORIES = [
   { id: "text", label: "Text", icon: Type },
   { id: "choices", label: "Choices", icon: ListChecks },
   { id: "visual", label: "Visual", icon: Grid },
+  { id: "consultant", label: "Consult", icon: Briefcase },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]["id"];
@@ -62,6 +66,10 @@ const TOOLS: Record<CategoryId, ToolConfig[]> = {
     { type: "image_choice", label: "Image Choice", helperText: "Visual selection", icon: ImageIcon },
     { type: "image_moodboard", label: "Moodboard", helperText: "Image curation", icon: Palette },
     { type: "this_not_this", label: "This / Not This", helperText: "Visual sorting", icon: Split },
+  ],
+  consultant: [
+    { type: "link_preview", label: "Link Preview", helperText: "Client pastes URLs", icon: Link },
+    { type: "book_call", label: "Book a Call", helperText: "Booking CTA button", icon: Phone },
   ],
 };
 

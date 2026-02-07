@@ -3,9 +3,9 @@ import { EditorState, IntakeSection, IntakeEdge } from "@/types/editor";
 export interface Route {
     targetSectionId: string;
     condition?: {
-        fromBlockId: string;
-        operator: "equals";
-        value: string;
+        fromBlockId?: string;
+        operator: "equals" | "any";
+        value?: string;
     };
 }
 

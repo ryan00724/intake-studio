@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useEditor } from "@/hooks/use-editor";
 import { SortableSection } from "./sortable-section";
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function Canvas() {
   const { sections, selectItem, selectedId } = useEditor();
@@ -17,6 +17,59 @@ export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [connections, setConnections] = useState<{ path: string; marker?: string; sourceId: string; targetId: string; isRouting?: boolean; selectionId?: string }[]>([]);
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
+
+  // Compute tree layout: group sibling sections (routed from the same parent) into horizontal rows
+  const layoutRows = useMemo(() => {
+    if (sections.length === 0) return [];
+
+    const sectionSet = new Set(sections.map(s => s.id));
+
+    // Build routing graph: parent -> deduplicated children
+    const childrenMap = new Map<string, string[]>();
+    sections.forEach(s => {
+      if (s.routing && s.routing.length > 0) {
+        const targets = [...new Set(
+          s.routing.map(r => r.nextSectionId).filter(id => sectionSet.has(id))
+        )];
+        if (targets.length > 0) childrenMap.set(s.id, targets);
+      }
+    });
+
+    // BFS from sections[0] to build rows
+    const placed = new Set<string>();
+    const rows: string[][] = [];
+
+    rows.push([sections[0].id]);
+    placed.add(sections[0].id);
+
+    let currentRow = [sections[0].id];
+    while (currentRow.length > 0) {
+      const nextRow: string[] = [];
+      for (const sectionId of currentRow) {
+        const kids = childrenMap.get(sectionId) || [];
+        for (const kid of kids) {
+          if (!placed.has(kid)) {
+            nextRow.push(kid);
+            placed.add(kid);
+          }
+        }
+      }
+      if (nextRow.length > 0) {
+        rows.push(nextRow);
+      }
+      currentRow = nextRow;
+    }
+
+    // Append any remaining unplaced sections (disconnected) as individual rows
+    sections.forEach(s => {
+      if (!placed.has(s.id)) {
+        rows.push([s.id]);
+        placed.add(s.id);
+      }
+    });
+
+    return rows;
+  }, [sections]);
 
   // Function to calculate connection lines
   const updateConnections = () => {
@@ -236,7 +289,7 @@ export function Canvas() {
 
         <div 
             ref={setNodeRef} 
-            className="relative z-10 w-full max-w-3xl mx-auto space-y-6"
+            className="relative z-10 w-full mx-auto space-y-6"
             onClick={() => selectItem(null)}
         >
             <SortableContext
@@ -244,24 +297,35 @@ export function Canvas() {
                 strategy={verticalListSortingStrategy}
             >
                 {sections.length === 0 ? (
-                <div className="flex flex-col items-center justify-center text-zinc-400 gap-2 min-h-[300px] border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/20 w-96">
+                <div className="flex flex-col items-center justify-center text-zinc-400 gap-2 min-h-[300px] border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-800/20 w-96 mx-auto">
                     <p className="font-medium">Drag a section here to start</p>
                 </div>
                 ) : (
                  <>
                      <AnimatePresence mode="popLayout">
-                        {sections.map((section) => (
-                            <div 
-                                key={section.id} 
-                                className="w-full"
-                                onMouseEnter={() => setHoveredSectionId(section.id)}
-                                onMouseLeave={() => setHoveredSectionId(null)}
-                                style={{
-                                    opacity: (hoveredSectionId || selectedId) && (hoveredSectionId !== section.id && selectedId !== section.id) ? 0.6 : 1,
-                                    transition: "opacity 0.3s ease"
-                                }}
+                        {layoutRows.map((row, rowIndex) => (
+                            <div
+                                key={rowIndex}
+                                className={`flex gap-4 ${row.length > 1 ? 'justify-center' : 'justify-center'}`}
                             >
-                                <SortableSection section={section} />
+                                {row.map(sectionId => {
+                                    const section = sections.find(s => s.id === sectionId);
+                                    if (!section) return null;
+                                    return (
+                                        <div 
+                                            key={section.id} 
+                                            className={row.length > 1 ? 'flex-1 min-w-0 max-w-sm' : 'w-full max-w-3xl'}
+                                            onMouseEnter={() => setHoveredSectionId(section.id)}
+                                            onMouseLeave={() => setHoveredSectionId(null)}
+                                            style={{
+                                                opacity: (hoveredSectionId || selectedId) && (hoveredSectionId !== section.id && selectedId !== section.id) ? 0.6 : 1,
+                                                transition: "opacity 0.3s ease"
+                                            }}
+                                        >
+                                            <SortableSection section={section} />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         ))}
                     </AnimatePresence>

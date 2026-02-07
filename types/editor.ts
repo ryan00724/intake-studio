@@ -1,6 +1,6 @@
 export type InputType = "short" | "long" | "select" | "multi" | "slider" | "date" | "file";
 
-export type BlockType = "context" | "question" | "image_choice" | "image_moodboard" | "this_not_this";
+export type BlockType = "context" | "question" | "image_choice" | "image_moodboard" | "this_not_this" | "link_preview" | "book_call";
 
 export interface BaseBlock {
   id: string;
@@ -62,7 +62,35 @@ export interface QuestionBlock extends BaseBlock {
   options?: string[]; // For select/multi
 }
 
-export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | ImageMoodboardBlock | ThisNotThisBlock;
+export interface LinkPreviewItem {
+  id: string;
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  screenshot?: string;
+  domain?: string;
+}
+
+export interface LinkPreviewBlock extends BaseBlock {
+  type: "link_preview";
+  label: string;
+  helperText?: string;
+  required?: boolean;
+  maxItems?: number;
+}
+
+export interface BookCallBlock extends BaseBlock {
+  type: "book_call";
+  title?: string;
+  text?: string;
+  bookingUrl: string;
+  buttonLabel?: string;
+  openInNewTab?: boolean;
+  requiredToContinue?: boolean;
+}
+
+export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | ImageMoodboardBlock | ThisNotThisBlock | LinkPreviewBlock | BookCallBlock;
 
 export interface IntakeTheme {
     accentColor?: string;
@@ -92,9 +120,9 @@ export interface IntakeSectionStyle {
 
 export interface SectionRouteRule {
     id: string;
-    fromBlockId: string;
-    operator: "equals"; // For now just equals
-    value: string;
+    fromBlockId?: string;
+    operator: "equals" | "any";
+    value?: string;
     nextSectionId: string;
 }
 
@@ -118,6 +146,7 @@ export interface IntakeMetadata {
     slug?: string;
     publishedAt?: string;
     mode?: "guided" | "document";
+    colorMode?: "light" | "dark"; // Deploy in light or dark mode
     theme?: IntakeTheme;
 }
 
@@ -126,9 +155,9 @@ export interface IntakeEdge {
   source: string;
   target: string;
   condition?: {
-    fromBlockId: string;
-    operator: "equals";
-    value: string;
+    fromBlockId?: string;
+    operator: "equals" | "any";
+    value?: string;
   };
 }
 
@@ -145,4 +174,12 @@ export interface PublishedIntake {
     edges?: IntakeEdge[];
     metadata: IntakeMetadata;
     publishedAt: number;
+}
+
+export interface Submission {
+    id: string;
+    intake_id: string;
+    answers: Record<string, any>;
+    metadata: Record<string, any>;
+    created_at: string;
 }
