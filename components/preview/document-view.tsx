@@ -212,22 +212,49 @@ export function PreviewBlock({
       );
   }
 
-  // Question Block
+  if (block.type === "link_preview") {
+      return (
+        <div className="space-y-2">
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                {replacePlaceholders(block.label || "Links", personalization)}
+            </label>
+            {block.helperText && <p className="text-xs text-zinc-500">{replacePlaceholders(block.helperText, personalization)}</p>}
+            <div className="p-4 border border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg text-sm text-zinc-400 text-center">
+                Link preview (interactive in published view)
+            </div>
+        </div>
+      );
+  }
+
+  if (block.type === "book_call") {
+      return (
+        <div className="space-y-2">
+            {block.title && <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{replacePlaceholders(block.title, personalization)}</h4>}
+            {block.text && <p className="text-xs text-zinc-500">{replacePlaceholders(block.text, personalization)}</p>}
+            <button className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" disabled>
+                {block.buttonLabel || "Book a Call"}
+            </button>
+        </div>
+      );
+  }
+
+  // Question Block (narrowed to QuestionBlock at this point)
+  const qBlock = block as import("@/types/editor").QuestionBlock;
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {replacePlaceholders(block.label, personalization)} {block.required && <span className="text-red-500">*</span>}
+            {replacePlaceholders(qBlock.label, personalization)} {qBlock.required && <span className="text-red-500">*</span>}
           </label>
       </div>
       
-      {block.helperText && (
+      {qBlock.helperText && (
         <p className="text-xs text-zinc-500 mb-2">
-            {replacePlaceholders(block.helperText, personalization)}
+            {replacePlaceholders(qBlock.helperText, personalization)}
         </p>
       )}
 
-      {renderInput(block, register)}
+      {renderInput(qBlock, register)}
       
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
