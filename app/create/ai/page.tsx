@@ -13,6 +13,7 @@ export default function AICreationPage() {
   const router = useRouter();
   const [description, setDescription] = useState("");
   const [type, setType] = useState("Discovery");
+  const [complexity, setComplexity] = useState("medium");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +28,7 @@ export default function AICreationPage() {
       const genRes = await fetch("/api/generate-intake", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, type }),
+        body: JSON.stringify({ description, type, complexity }),
       });
 
       if (!genRes.ok) {
@@ -121,20 +122,37 @@ export default function AICreationPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-200">
-                Intake Type (Optional)
-              </label>
-              <Select
-                value={type}
-                onChange={setType}
-                options={[
-                  { value: "Discovery", label: "Discovery Call" },
-                  { value: "Onboarding", label: "Client Onboarding" },
-                  { value: "Project Brief", label: "Project Brief" },
-                  { value: "Feedback", label: "Feedback Survey" },
-                ]}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-200">
+                  Intake Type
+                </label>
+                <Select
+                  value={type}
+                  onChange={setType}
+                  options={[
+                    { value: "Discovery", label: "Discovery Call" },
+                    { value: "Onboarding", label: "Client Onboarding" },
+                    { value: "Project Brief", label: "Project Brief" },
+                    { value: "Feedback", label: "Feedback Survey" },
+                  ]}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-200">
+                  Complexity
+                </label>
+                <Select
+                  value={complexity}
+                  onChange={setComplexity}
+                  options={[
+                    { value: "simple", label: "Simple (2-3 sections)" },
+                    { value: "medium", label: "Medium (4-6 sections)" },
+                    { value: "detailed", label: "Detailed (7-10 sections)" },
+                  ]}
+                />
+              </div>
             </div>
           </div>
 

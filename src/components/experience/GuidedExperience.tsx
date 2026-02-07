@@ -62,6 +62,7 @@ export function GuidedExperience({
       ? currentSection.style.background
       : theme?.background;
 
+  // Video backgrounds use signed URLs resolved below.
   if (activeBackground?.type === "color") {
     bgStyle.backgroundColor = activeBackground.color;
   } else if (activeBackground?.type === "image" && activeBackground.imageUrl) {
@@ -243,28 +244,54 @@ export function GuidedExperience({
     }
   };
 
+  const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    const url = activeBackground?.type === "video" ? activeBackground.videoUrl : undefined;
+    if (!url) {
+      setResolvedVideoUrl(undefined);
+      return;
+    }
+    fetch(`/api/media-url?url=${encodeURIComponent(url)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const nextUrl = data?.signedUrl || url;
+        setResolvedVideoUrl(nextUrl);
+      })
+      .catch(() => {
+        setResolvedVideoUrl(url);
+      });
+  }, [activeBackground?.type, activeBackground?.videoUrl]);
+
+  const cardBackgroundColor = theme?.cardBackgroundColor;
+  const hasCardBackground = Boolean(cardBackgroundColor);
   const commonProps = {
       theme,
       // If we are in a theme mode, wrap content in a card style visually
-      cardStyle: activeBackground?.type !== "none" ? "bg-white/90 dark:bg-black/80 backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto" : ""
+      cardClassName: activeBackground?.type !== "none"
+        ? `backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto ${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"}`
+        : "",
+      cardStyle: activeBackground?.type !== "none" && hasCardBackground
+        ? { backgroundColor: cardBackgroundColor }
+        : undefined
   };
-
   return (
     <div 
         className="min-h-screen transition-colors duration-300 relative flex flex-col items-center justify-center py-12 overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
-        {activeBackground?.type === "video" && activeBackground.videoUrl && (
+        {activeBackground?.type === "video" && (resolvedVideoUrl || activeBackground.videoUrl) && (
             <video
+                key={resolvedVideoUrl || activeBackground.videoUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
-                preload="metadata"
-                className="absolute inset-0 w-full h-full object-cover z-0"
-            >
-                <source src={activeBackground.videoUrl.startsWith("http") || activeBackground.videoUrl.startsWith("/") ? activeBackground.videoUrl : `/${activeBackground.videoUrl}`} type="video/mp4" />
-            </video>
+                preload="auto"
+                crossOrigin="anonymous"
+                className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
+                src={(() => { const u = resolvedVideoUrl || activeBackground?.videoUrl || ""; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
+            />
         )}
 
         {activeBackground?.type === "image" && (
@@ -292,7 +319,7 @@ export function GuidedExperience({
         <div className="relative z-10 w-full px-6">
             {/* Render Phases */}
             {currentStep === -1 && (
-                <div className={commonProps.cardStyle}>
+                <div className={commonProps.cardClassName} style={commonProps.cardStyle}>
                     <WelcomeScreen
                         title={title}
                         intro={intro}
@@ -304,7 +331,7 @@ export function GuidedExperience({
             )}
 
             {currentStep === totalSections && (
-                <div className={commonProps.cardStyle}>
+                <div className={commonProps.cardClassName} style={commonProps.cardStyle}>
                     <CompletionScreen
                         closingMessage={closingMessage}
                         nextSteps={completionNextSteps}
@@ -323,7 +350,7 @@ export function GuidedExperience({
             {currentStep >= 0 && currentStep < totalSections && currentSection && (
                 <>
                     {showSectionIntro ? (
-                        <div className={commonProps.cardStyle}>
+                        <div className={commonProps.cardClassName} style={commonProps.cardStyle}>
                             <AnimatePresence mode="wait">
                                 <SectionIntro 
                                     key={`intro-${currentSection.id}`}
@@ -335,7 +362,7 @@ export function GuidedExperience({
                             </AnimatePresence>
                         </div>
                     ) : (
-                        <div className={`w-full max-w-2xl mx-auto ${commonProps.cardStyle ? commonProps.cardStyle : ""}`}>
+                        <div className={`w-full max-w-2xl mx-auto ${commonProps.cardClassName ? commonProps.cardClassName : ""}`} style={commonProps.cardStyle}>
                             {/* Progress Indicator */}
                             <div className="w-full mb-8 flex items-center justify-between text-xs font-medium text-zinc-400 uppercase tracking-wider">
                                 <span>Step {currentStep + 1} of {totalSections}</span>

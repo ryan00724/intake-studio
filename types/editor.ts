@@ -94,6 +94,7 @@ export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | Imag
 
 export interface IntakeTheme {
     accentColor?: string;
+    cardBackgroundColor?: string;
     background?: {
         type: "none" | "color" | "image" | "video";
         color?: string;

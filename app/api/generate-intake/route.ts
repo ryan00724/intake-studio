@@ -4,7 +4,7 @@ import { generateIntakeSchema } from "@/lib/schema";
 
 export async function POST(req: NextRequest) {
   try {
-    const { description, type } = await req.json();
+    const { description, type, complexity } = await req.json();
 
     if (!description) {
       return NextResponse.json(
@@ -12,6 +12,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Map complexity to section count guidance
+    const complexityMap: Record<string, { sections: string; blocks: string; branches: string }> = {
+      simple:   { sections: "2-3", blocks: "1-2 interactive blocks per section", branches: "No branching needed. Keep the flow linear and straightforward." },
+      medium:   { sections: "4-6", blocks: "1-3 interactive blocks per section", branches: "Include 1 conditional/alternative path based on a key decision." },
+      detailed: { sections: "7-10", blocks: "2-4 interactive blocks per section", branches: "Include 2-3 conditional/alternative paths. Create a richer, more thorough intake with deeper follow-up questions." },
+    };
+    const guide = complexityMap[complexity] || complexityMap.medium;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -29,12 +37,13 @@ export async function POST(req: NextRequest) {
       
       Business Description: ${description}
       Intake Type: ${type || "General Intake"}
+      Complexity: ${complexity || "medium"} (target ${guide.sections} sections, ${guide.blocks})
 
       Your goal is to generate a JSON object representing the structure of this guided intake.
       
       CRITICAL DESIGN INSTRUCTION:
       - Design this as a "Branch-Ready" flow.
-      - Include 1 conditional/alternative path based on a key decision.
+      - ${guide.branches}
       - Do NOT create routing rules, edges, or connections. The user will connect nodes visually in the editor.
       - Instead, create SECTIONS that imply the branching structure through their Titles and Context.
 
@@ -49,8 +58,8 @@ export async function POST(req: NextRequest) {
       STRICT RULES:
       1. Output ONLY valid JSON.
       2. The JSON must strictly follow the schema defined below.
-      3. Create 4-6 distinct sections total.
-      4. Ensure every section has at least 1 context block + 1-3 interactive blocks.
+      3. Create ${guide.sections} distinct sections total.
+      4. Ensure every section has at least 1 context block + ${guide.blocks}.
       5. Use a mix of block types: 
          - 'context' for instructions or section intros (CRITICAL for flow context)
          - 'question' for user inputs

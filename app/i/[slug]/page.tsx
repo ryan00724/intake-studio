@@ -70,7 +70,6 @@ export default function PublishedIntakePage() {
       isMounted = false;
     };
   }, [slug]);
-
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-zinc-50 dark:bg-black">
@@ -94,10 +93,8 @@ export default function PublishedIntakePage() {
       project: searchParams?.get("project") || undefined
   };
 
-  const isDark = intake.metadata.colorMode === "dark";
-
   return (
-    <div className={`min-h-screen font-sans ${isDark ? 'dark bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
+    <div className="min-h-screen font-sans bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100">
        <GuidedExperience 
           sections={intake.sections}
           edges={(intake as any).edges}

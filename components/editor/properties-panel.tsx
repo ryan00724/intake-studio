@@ -175,6 +175,54 @@ export function PropertiesPanel() {
             }
         }
     };
+
+    const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setUploading("video-bg");
+            try {
+                const result = await uploadFile(e.target.files[0], "backgrounds");
+                updateMetadata({
+                    theme: {
+                        ...metadata.theme,
+                        background: {
+                            ...metadata.theme?.background,
+                            type: "video",
+                            videoUrl: result.url,
+                            // Ensure image properties don't conflict visually if switching types rapidly
+                            imageUrl: undefined,
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Video upload failed:", err);
+            } finally {
+                setUploading(null);
+            }
+        }
+    };
+
+    const handleSectionVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (selectedSection && e.target.files && e.target.files[0]) {
+            setUploading("section-video");
+            try {
+                const result = await uploadFile(e.target.files[0], "backgrounds");
+                updateSection(selectedSection.id, {
+                    style: {
+                        ...selectedSection.style,
+                        background: {
+                            ...selectedSection.style?.background,
+                            type: "video",
+                            videoUrl: result.url,
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Section video upload failed:", err);
+            } finally {
+                setUploading(null);
+            }
+        }
+    };
     // GLOBAL METADATA EDITING (No Selection)
   if (!selectedId || (!selectedSection && !selectedBlock && !selectedEdge)) {
     return (
@@ -234,15 +282,47 @@ export function PropertiesPanel() {
                     </div>
                 </Field>
 
-                <Field label="Color Mode" hint="Light or dark appearance when published.">
-                    <Select
-                        value={metadata.colorMode || "light"}
-                        onChange={(val) => updateMetadata({ colorMode: val as "light" | "dark" })}
-                        options={[
-                            { label: "Light", value: "light" },
-                            { label: "Dark", value: "dark" },
-                        ]}
-                    />
+                <Field label="Card Background Color">
+                    <div className="flex gap-2">
+                        <input 
+                            type="color" 
+                            value={metadata.theme?.cardBackgroundColor || "#ffffff"}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                updateMetadata({ 
+                                    theme: { 
+                                        ...metadata.theme, 
+                                        cardBackgroundColor: next 
+                                    } 
+                                });
+                            }}
+                            className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                        />
+                        <Input
+                            value={metadata.theme?.cardBackgroundColor || ""}
+                            onChange={(e) => updateMetadata({ 
+                                theme: { 
+                                    ...metadata.theme, 
+                                    cardBackgroundColor: e.target.value || undefined 
+                                } 
+                            })}
+                            placeholder="#ffffff"
+                            className="flex-1"
+                        />
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => updateMetadata({ 
+                                theme: { 
+                                    ...metadata.theme, 
+                                    cardBackgroundColor: undefined 
+                                } 
+                            })}
+                            title="Clear card color"
+                        >
+                            ✕
+                        </Button>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 mt-1">Applies to the main intake cards.</p>
                 </Field>
 
                 <Field label="Background Type">
@@ -263,67 +343,7 @@ export function PropertiesPanel() {
                     />
                 </Field>
 
-                {metadata.theme?.background?.type === "video" && (
-                    <div className="space-y-4">
-                        <Field label="Video URL (MP4)" hint="Paste a direct .mp4 link. YouTube/Vimeo not supported.">
-                            <Input
-                                value={metadata.theme.background.videoUrl || ""}
-                                onChange={(e) => updateMetadata({
-                                    theme: {
-                                        ...metadata.theme,
-                                        background: { ...metadata.theme?.background, type: "video", videoUrl: e.target.value }
-                                    }
-                                })}
-                                placeholder="https://example.com/video.mp4"
-                            />
-                            {metadata.theme.background.videoUrl && !metadata.theme.background.videoUrl.match(/\.(mp4|webm|mov)$/i) && (
-                                <p className="text-xs text-zinc-400 mt-1">Note: MP4 recommended. For local public files, ensure path starts with &apos;/&apos;.</p>
-                            )}
-                        </Field>
-
-                        <Field label="Overlay Color">
-                            <div className="flex gap-2">
-                                <input
-                                    type="color"
-                                    value={metadata.theme?.background?.overlayColor || "#000000"}
-                                    onChange={(e) => updateMetadata({
-                                        theme: {
-                                            ...metadata.theme,
-                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
-                                        }
-                                    })}
-                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
-                                />
-                                <Input
-                                    value={metadata.theme?.background?.overlayColor || ""}
-                                    onChange={(e) => updateMetadata({
-                                        theme: {
-                                            ...metadata.theme,
-                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
-                                        }
-                                    })}
-                                    placeholder="#000000"
-                                    className="flex-1"
-                                />
-                            </div>
-                        </Field>
-
-                        <Field label="Overlay Opacity">
-                            <input
-                                type="range"
-                                min="0" max="1" step="0.05"
-                                value={metadata.theme?.background?.overlayOpacity ?? 0.55}
-                                onChange={(e) => updateMetadata({
-                                    theme: {
-                                        ...metadata.theme,
-                                        background: { ...metadata.theme?.background, type: "video", overlayOpacity: parseFloat(e.target.value) }
-                                    }
-                                })}
-                                className="w-full accent-blue-600"
-                            />
-                        </Field>
-                    </div>
-                )}
+                {/* Video background controls are consolidated below the image section */}
 
                 {metadata.theme?.background?.type === "color" && (
                     <Field label="Background Color">
@@ -403,6 +423,103 @@ export function PropertiesPanel() {
                                     theme: { 
                                         ...metadata.theme, 
                                         background: { ...metadata.theme?.background, type: "image", blurPx: parseInt(e.target.value) } 
+                                    } 
+                                })}
+                                className="w-full accent-blue-600"
+                            />
+                        </Field>
+                    </div>
+                )}
+
+                {metadata.theme?.background?.type === "video" && (
+                    <div className="space-y-4">
+                        <Field label="Upload Video">
+                            <Input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoChange} disabled={uploading === "video-bg"} />
+                            {uploading === "video-bg" && <p className="text-xs text-zinc-400 animate-pulse">Uploading video...</p>}
+                            <p className="text-[11px] text-zinc-400 mt-1">MP4, WebM, or MOV. Max 50MB.</p>
+                        </Field>
+
+                        <Field label="Or paste a URL">
+                            <Input
+                                value={metadata.theme?.background?.videoUrl || ""}
+                                onChange={(e) => updateMetadata({
+                                    theme: {
+                                        ...metadata.theme,
+                                        background: { ...metadata.theme?.background, type: "video", videoUrl: e.target.value }
+                                    }
+                                })}
+                                placeholder="https://example.com/video.mp4"
+                            />
+                        </Field>
+
+                        {metadata.theme.background.videoUrl && (
+                            <div className="relative w-full h-32 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                <video
+                                    src={metadata.theme.background.videoUrl}
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="w-full h-full object-cover"
+                                />
+                                <div 
+                                    className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300"
+                                    style={{
+                                        backgroundColor: metadata.theme.background.overlayColor || "#000000",
+                                        opacity: metadata.theme.background.overlayOpacity ?? 0.55
+                                    }}
+                                />
+                                <button
+                                    onClick={() => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "video", videoUrl: undefined }
+                                        }
+                                    })}
+                                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white hover:bg-red-500 flex items-center justify-center text-xs backdrop-blur-sm transition-colors"
+                                    title="Remove video"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
+
+                        <Field label="Overlay Color">
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={metadata.theme?.background?.overlayColor || "#000000"}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                                <Input
+                                    value={metadata.theme?.background?.overlayColor || ""}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "video", overlayColor: e.target.value }
+                                        }
+                                    })}
+                                    placeholder="#000000"
+                                    className="flex-1"
+                                />
+                            </div>
+                        </Field>
+
+                        <Field label="Overlay Opacity">
+                            <input 
+                                type="range" 
+                                min="0" max="1" step="0.05"
+                                value={metadata.theme?.background?.overlayOpacity ?? 0.55}
+                                onChange={(e) => updateMetadata({ 
+                                    theme: { 
+                                        ...metadata.theme, 
+                                        background: { ...metadata.theme?.background, type: "video", overlayOpacity: parseFloat(e.target.value) } 
                                     } 
                                 })}
                                 className="w-full accent-blue-600"
@@ -788,6 +905,7 @@ export function PropertiesPanel() {
                                 { label: "None (Global)", value: "none" },
                                 { label: "Solid Color", value: "color" },
                                 { label: "Image", value: "image" },
+                                { label: "Video", value: "video" },
                             ]}
                         />
                     </Field>
@@ -870,6 +988,61 @@ export function PropertiesPanel() {
                                         style: { 
                                             ...selectedSection!.style, 
                                             background: { ...selectedSection!.style?.background, type: "image", blurPx: parseInt(e.target.value) } 
+                                        } 
+                                    })}
+                                    className="w-full accent-blue-600"
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    {selectedSection.style?.background?.type === "video" && (
+                        <div className="space-y-4">
+                            <Field label="Video Upload">
+                                <Input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={handleSectionVideoChange} disabled={uploading === "section-video"} />
+                                {uploading === "section-video" && <p className="text-xs text-zinc-400 animate-pulse">Uploading video...</p>}
+                                <p className="text-[11px] text-zinc-400 mt-1">MP4, WebM, or MOV. Max 50MB.</p>
+                            </Field>
+                            {selectedSection.style.background.videoUrl && (
+                                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                    <video
+                                        src={selectedSection.style.background.videoUrl}
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div 
+                                        className="absolute inset-0 bg-black pointer-events-none transition-opacity duration-300"
+                                        style={{
+                                            opacity: selectedSection.style.background.overlayOpacity ?? 0.55
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => updateSection(selectedSection!.id, {
+                                            style: {
+                                                ...selectedSection!.style,
+                                                background: { ...selectedSection!.style?.background, type: "video", videoUrl: undefined }
+                                            }
+                                        })}
+                                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white hover:bg-red-500 flex items-center justify-center text-xs backdrop-blur-sm transition-colors"
+                                        title="Remove video"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+
+                            <Field label="Overlay Opacity">
+                                <input 
+                                    type="range" 
+                                    min="0" max="1" step="0.05"
+                                    value={selectedSection.style?.background?.overlayOpacity ?? 0.55}
+                                    onChange={(e) => updateSection(selectedSection!.id, { 
+                                        style: { 
+                                            ...selectedSection!.style, 
+                                            background: { ...selectedSection!.style?.background, type: "video", overlayOpacity: parseFloat(e.target.value) } 
                                         } 
                                     })}
                                     className="w-full accent-blue-600"

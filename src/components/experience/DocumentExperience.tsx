@@ -19,6 +19,29 @@ export function DocumentExperience({
   intro,
   theme,
 }: DocumentExperienceProps) {
+  const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | undefined>(undefined);
+  const cardBackgroundColor = theme?.cardBackgroundColor;
+  const hasCardBackground = Boolean(cardBackgroundColor);
+  const cardClassName = `${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"} backdrop-blur-md shadow-lg rounded-2xl p-8`;
+  const cardStyle: React.CSSProperties | undefined = hasCardBackground
+    ? { backgroundColor: cardBackgroundColor }
+    : undefined;
+  React.useEffect(() => {
+    const url = theme?.background?.type === "video" ? theme.background.videoUrl : undefined;
+    if (!url) {
+      setResolvedVideoUrl(undefined);
+      return;
+    }
+    fetch(`/api/media-url?url=${encodeURIComponent(url)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const nextUrl = data?.signedUrl || url;
+        setResolvedVideoUrl(nextUrl);
+      })
+      .catch(() => {
+        setResolvedVideoUrl(url);
+      });
+  }, [theme?.background?.type, theme?.background?.videoUrl]);
   const bgStyle: React.CSSProperties = {};
   if (theme?.background?.type === "color") {
     bgStyle.backgroundColor = theme.background.color;
@@ -42,17 +65,18 @@ export function DocumentExperience({
         className="min-h-screen transition-colors duration-300 relative overflow-y-auto" 
         style={{ ...bgStyle, ...containerStyle }}
     >
-        {theme?.background?.type === "video" && theme.background.videoUrl && (
+        {theme?.background?.type === "video" && (resolvedVideoUrl || theme.background.videoUrl) && (
             <video
+                key={resolvedVideoUrl || theme.background.videoUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
-                preload="metadata"
-                className="absolute inset-0 w-full h-full object-cover z-0"
-            >
-                <source src={theme.background.videoUrl.startsWith("http") || theme.background.videoUrl.startsWith("/") ? theme.background.videoUrl : `/${theme.background.videoUrl}`} type="video/mp4" />
-            </video>
+                preload="auto"
+                crossOrigin="anonymous"
+                className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
+                src={(() => { const u = resolvedVideoUrl || theme?.background?.videoUrl || ""; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
+            />
         )}
         
         {theme?.background?.type === "image" && theme.background.imageUrl && (
@@ -79,9 +103,7 @@ export function DocumentExperience({
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-12 space-y-16 pb-32">
             {/* Header */}
-            <div className={`
-                ${theme?.background?.type !== "none" ? "bg-white/90 dark:bg-black/80 backdrop-blur-md shadow-lg rounded-2xl p-8" : ""}
-            `}>
+            <div className={theme?.background?.type !== "none" ? cardClassName : ""} style={theme?.background?.type !== "none" ? cardStyle : undefined}>
                 <header className="space-y-4 text-center mb-8">
                     {title && (
                     <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -115,6 +137,7 @@ export function DocumentExperience({
                             <div 
                                 key={block.id}
                                 className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm"
+                                style={cardStyle}
                             >
                                 <BlockRenderer
                                     block={block}

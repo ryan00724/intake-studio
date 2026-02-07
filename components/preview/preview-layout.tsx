@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { ExperienceRenderer } from "@/src/components/experience/ExperienceRenderer";
 import { PersonalizationParams } from "@/src/lib/experience/personalize";
