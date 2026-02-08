@@ -45,7 +45,7 @@ export default function PublishedIntakePage() {
 
   const [intake, setIntake] = useState<PublishedIntake | null>(null);
   const [loading, setLoading] = useState(true);
-  const preloadCleanup = useRef<(() => void) | undefined>();
+  const preloadCleanup = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     let isMounted = true;
