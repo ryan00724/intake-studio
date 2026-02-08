@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       .from(BUCKET)
       .upload(filePath, buffer, {
         contentType: file.type,
+        cacheControl: "31536000", // 1 year – assets are immutable (unique filenames)
         upsert: false,
       });
 

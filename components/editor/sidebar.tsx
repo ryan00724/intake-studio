@@ -21,7 +21,12 @@ import {
   Link,
   Phone,
   Briefcase,
-  ListChecks
+  ListChecks,
+  Monitor,
+  Heading,
+  Minus,
+  Video,
+  Quote,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BlockType, InputType } from "@/types/editor";
@@ -31,6 +36,7 @@ import { useEditor } from "@/hooks/use-editor";
 
 const CATEGORIES = [
   { id: "structure", label: "Structure", icon: Layers },
+  { id: "presentation", label: "Presentation", icon: Monitor },
   { id: "text", label: "Text", icon: Type },
   { id: "choices", label: "Choices", icon: ListChecks },
   { id: "visual", label: "Visual", icon: Grid },
@@ -51,6 +57,13 @@ const TOOLS: Record<CategoryId, ToolConfig[]> = {
   structure: [
     { type: "section", label: "New Section", helperText: "Start a new page", icon: LayoutTemplate },
     { type: "context", label: "Context Block", helperText: "Instructions or info", icon: AlignLeft },
+  ],
+  presentation: [
+    { type: "heading", label: "Heading", helperText: "Title or subtitle", icon: Heading },
+    { type: "divider", label: "Divider", helperText: "Visual separator", icon: Minus },
+    { type: "image_display", label: "Image", helperText: "Display an image", icon: ImageIcon },
+    { type: "video_embed", label: "Video", helperText: "Embed a video", icon: Video },
+    { type: "quote", label: "Quote", helperText: "Blockquote text", icon: Quote },
   ],
   text: [
     { type: "question", inputType: "short", label: "Short Text", helperText: "Single line input", icon: TextCursor },

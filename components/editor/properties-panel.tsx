@@ -11,6 +11,7 @@ import { Button } from "@/src/components/ui/Button";
 import { Checkbox } from "@/src/components/ui/Checkbox";
 import { useState, useCallback } from "react";
 import { uploadFile } from "@/src/lib/upload";
+import { GRADIENT_PRESETS, PATTERN_TYPES, getPatternCss } from "@/lib/background-presets";
 
 const INPUT_TYPE_OPTIONS = [
   { label: "Short Text", value: "short" },
@@ -379,13 +380,14 @@ export function PropertiesPanel() {
                         options={[
                             { label: "None (Default)", value: "none" },
                             { label: "Solid Color", value: "color" },
+                            { label: "Gradient", value: "gradient" },
+                            { label: "Pattern", value: "pattern" },
+                            { label: "Animated Gradient", value: "animated_gradient" },
                             { label: "Image", value: "image" },
                             { label: "Video", value: "video" },
                         ]}
                     />
                 </Field>
-
-                {/* Video background controls are consolidated below the image section */}
 
                 {metadata.theme?.background?.type === "color" && (
                     <Field label="Background Color">
@@ -567,6 +569,246 @@ export function PropertiesPanel() {
                                 className="w-full accent-blue-600"
                             />
                         </Field>
+
+                        <Field label="Enable Audio">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={metadata.theme?.background?.audioEnabled ?? false}
+                                    onClick={() => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: {
+                                                ...metadata.theme?.background,
+                                                type: "video",
+                                                audioEnabled: !(metadata.theme?.background?.audioEnabled ?? false),
+                                            },
+                                        },
+                                    })}
+                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        metadata.theme?.background?.audioEnabled
+                                            ? "bg-blue-600"
+                                            : "bg-zinc-300 dark:bg-zinc-600"
+                                    }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                            metadata.theme?.background?.audioEnabled ? "translate-x-4" : "translate-x-0"
+                                        }`}
+                                    />
+                                </button>
+                                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    {metadata.theme?.background?.audioEnabled ? "On" : "Off"}
+                                </span>
+                            </label>
+                            <p className="text-[11px] text-zinc-400 mt-1">Users will see an unmute button to enable sound.</p>
+                        </Field>
+                    </div>
+                )}
+
+                {metadata.theme?.background?.type === "gradient" && (
+                    <div className="space-y-3">
+                        <Field label="Gradient Preset">
+                            <div className="grid grid-cols-5 gap-1.5">
+                                {Object.entries(GRADIENT_PRESETS).map(([key, preset]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => updateMetadata({
+                                            theme: {
+                                                ...metadata.theme,
+                                                background: { ...metadata.theme?.background, type: "gradient", gradientPreset: key }
+                                            }
+                                        })}
+                                        className={`h-10 rounded-lg transition-all ${
+                                            metadata.theme?.background?.gradientPreset === key
+                                                ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-900 scale-105"
+                                                : "hover:scale-105"
+                                        }`}
+                                        style={{ background: preset.css }}
+                                        title={preset.label}
+                                    />
+                                ))}
+                            </div>
+                        </Field>
+                        {metadata.theme?.background?.gradientPreset && (
+                            <div
+                                className="w-full h-20 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                                style={{ background: GRADIENT_PRESETS[metadata.theme.background.gradientPreset]?.css }}
+                            />
+                        )}
+                    </div>
+                )}
+
+                {metadata.theme?.background?.type === "pattern" && (
+                    <div className="space-y-3">
+                        <Field label="Pattern Style">
+                            <div className="grid grid-cols-5 gap-1.5">
+                                {PATTERN_TYPES.map((pt) => {
+                                    const preview = getPatternCss(pt.id, "#00000025", "#ffffff");
+                                    return (
+                                        <button
+                                            key={pt.id}
+                                            onClick={() => updateMetadata({
+                                                theme: {
+                                                    ...metadata.theme,
+                                                    background: { ...metadata.theme?.background, type: "pattern", patternType: pt.id }
+                                                }
+                                            })}
+                                            className={`h-10 rounded-lg border transition-all ${
+                                                metadata.theme?.background?.patternType === pt.id
+                                                    ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-900 border-blue-300"
+                                                    : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                                            }`}
+                                            style={{ backgroundColor: preview.backgroundColor, backgroundImage: preview.backgroundImage, backgroundSize: preview.backgroundSize }}
+                                            title={pt.label}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </Field>
+                        <Field label="Pattern Color">
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={metadata.theme?.background?.patternColor || "#00000015"}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "pattern", patternColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                                <Input
+                                    value={metadata.theme?.background?.patternColor || ""}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "pattern", patternColor: e.target.value }
+                                        }
+                                    })}
+                                    placeholder="#00000015"
+                                    className="flex-1"
+                                />
+                            </div>
+                        </Field>
+                        <Field label="Background Color">
+                            <div className="flex gap-2">
+                                <input
+                                    type="color"
+                                    value={metadata.theme?.background?.patternBgColor || "#ffffff"}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "pattern", patternBgColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                                <Input
+                                    value={metadata.theme?.background?.patternBgColor || ""}
+                                    onChange={(e) => updateMetadata({
+                                        theme: {
+                                            ...metadata.theme,
+                                            background: { ...metadata.theme?.background, type: "pattern", patternBgColor: e.target.value }
+                                        }
+                                    })}
+                                    placeholder="#ffffff"
+                                    className="flex-1"
+                                />
+                            </div>
+                        </Field>
+                        {metadata.theme?.background?.patternType && (
+                            <div
+                                className="w-full h-20 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                                style={getPatternCss(
+                                    metadata.theme.background.patternType,
+                                    metadata.theme.background.patternColor || "#00000015",
+                                    metadata.theme.background.patternBgColor || "#ffffff"
+                                )}
+                            />
+                        )}
+                    </div>
+                )}
+
+                {metadata.theme?.background?.type === "animated_gradient" && (
+                    <div className="space-y-3">
+                        <Field label="Gradient Colors (2-4)">
+                            <div className="flex gap-2 flex-wrap">
+                                {(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).map((c, i) => (
+                                    <input
+                                        key={i}
+                                        type="color"
+                                        value={c}
+                                        onChange={(e) => {
+                                            const colors = [...(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"])];
+                                            colors[i] = e.target.value;
+                                            updateMetadata({
+                                                theme: {
+                                                    ...metadata.theme,
+                                                    background: { ...metadata.theme?.background, type: "animated_gradient", animatedGradientColors: colors }
+                                                }
+                                            });
+                                        }}
+                                        className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                    />
+                                ))}
+                                {(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).length < 4 && (
+                                    <button
+                                        onClick={() => {
+                                            const colors = [...(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"]), "#43e97b"];
+                                            updateMetadata({
+                                                theme: {
+                                                    ...metadata.theme,
+                                                    background: { ...metadata.theme?.background, type: "animated_gradient", animatedGradientColors: colors }
+                                                }
+                                            });
+                                        }}
+                                        className="h-9 w-9 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-zinc-500 hover:text-zinc-600 transition-colors flex items-center justify-center text-lg"
+                                        title="Add color"
+                                    >+</button>
+                                )}
+                                {(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).length > 2 && (
+                                    <button
+                                        onClick={() => {
+                                            const colors = [...(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"])];
+                                            colors.pop();
+                                            updateMetadata({
+                                                theme: {
+                                                    ...metadata.theme,
+                                                    background: { ...metadata.theme?.background, type: "animated_gradient", animatedGradientColors: colors }
+                                                }
+                                            });
+                                        }}
+                                        className="h-9 w-9 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-red-400 hover:text-red-500 transition-colors flex items-center justify-center text-lg"
+                                        title="Remove last color"
+                                    >-</button>
+                                )}
+                            </div>
+                        </Field>
+                        <Field label={`Speed (${metadata.theme?.background?.animatedGradientSpeed || 8}s per cycle)`}>
+                            <input
+                                type="range"
+                                min="4" max="20" step="1"
+                                value={metadata.theme?.background?.animatedGradientSpeed ?? 8}
+                                onChange={(e) => updateMetadata({
+                                    theme: {
+                                        ...metadata.theme,
+                                        background: { ...metadata.theme?.background, type: "animated_gradient", animatedGradientSpeed: parseInt(e.target.value) }
+                                    }
+                                })}
+                                className="w-full accent-blue-600"
+                            />
+                        </Field>
+                        <div
+                            className="w-full h-20 rounded-lg border border-zinc-200 dark:border-zinc-700 animate-gradient-shift"
+                            style={{
+                                backgroundImage: `linear-gradient(135deg, ${(metadata.theme?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).join(", ")})`,
+                                backgroundSize: "200% 200%",
+                                animationDuration: `${metadata.theme?.background?.animatedGradientSpeed || 8}s`,
+                            }}
+                        />
                     </div>
                 )}
             </div>
@@ -946,6 +1188,9 @@ export function PropertiesPanel() {
                             options={[
                                 { label: "None (Global)", value: "none" },
                                 { label: "Solid Color", value: "color" },
+                                { label: "Gradient", value: "gradient" },
+                                { label: "Pattern", value: "pattern" },
+                                { label: "Animated Gradient", value: "animated_gradient" },
                                 { label: "Image", value: "image" },
                                 { label: "Video", value: "video" },
                             ]}
@@ -1086,6 +1331,145 @@ export function PropertiesPanel() {
                                             ...selectedSection!.style, 
                                             background: { ...selectedSection!.style?.background, type: "video", overlayOpacity: parseFloat(e.target.value) } 
                                         } 
+                                    })}
+                                    className="w-full accent-blue-600"
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    {selectedSection.style?.background?.type === "gradient" && (
+                        <div className="space-y-3">
+                            <Field label="Gradient Preset">
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {Object.entries(GRADIENT_PRESETS).map(([key, preset]) => (
+                                        <button
+                                            key={key}
+                                            onClick={() => updateSection(selectedSection!.id, {
+                                                style: {
+                                                    ...selectedSection!.style,
+                                                    background: { ...selectedSection!.style?.background, type: "gradient", gradientPreset: key }
+                                                }
+                                            })}
+                                            className={`h-10 rounded-lg transition-all ${
+                                                selectedSection.style?.background?.gradientPreset === key
+                                                    ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-900 scale-105"
+                                                    : "hover:scale-105"
+                                            }`}
+                                            style={{ background: preset.css }}
+                                            title={preset.label}
+                                        />
+                                    ))}
+                                </div>
+                            </Field>
+                        </div>
+                    )}
+
+                    {selectedSection.style?.background?.type === "pattern" && (
+                        <div className="space-y-3">
+                            <Field label="Pattern Style">
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {PATTERN_TYPES.map((pt) => {
+                                        const preview = getPatternCss(pt.id, "#00000025", "#ffffff");
+                                        return (
+                                            <button
+                                                key={pt.id}
+                                                onClick={() => updateSection(selectedSection!.id, {
+                                                    style: {
+                                                        ...selectedSection!.style,
+                                                        background: { ...selectedSection!.style?.background, type: "pattern", patternType: pt.id }
+                                                    }
+                                                })}
+                                                className={`h-10 rounded-lg border transition-all ${
+                                                    selectedSection.style?.background?.patternType === pt.id
+                                                        ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-zinc-900 border-blue-300"
+                                                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400"
+                                                }`}
+                                                style={{ backgroundColor: preview.backgroundColor, backgroundImage: preview.backgroundImage, backgroundSize: preview.backgroundSize }}
+                                                title={pt.label}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </Field>
+                            <Field label="Pattern Color">
+                                <input
+                                    type="color"
+                                    value={selectedSection.style?.background?.patternColor || "#00000015"}
+                                    onChange={(e) => updateSection(selectedSection!.id, {
+                                        style: {
+                                            ...selectedSection!.style,
+                                            background: { ...selectedSection!.style?.background, type: "pattern", patternColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                            </Field>
+                            <Field label="Background Color">
+                                <input
+                                    type="color"
+                                    value={selectedSection.style?.background?.patternBgColor || "#ffffff"}
+                                    onChange={(e) => updateSection(selectedSection!.id, {
+                                        style: {
+                                            ...selectedSection!.style,
+                                            background: { ...selectedSection!.style?.background, type: "pattern", patternBgColor: e.target.value }
+                                        }
+                                    })}
+                                    className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    {selectedSection.style?.background?.type === "animated_gradient" && (
+                        <div className="space-y-3">
+                            <Field label="Gradient Colors (2-4)">
+                                <div className="flex gap-2 flex-wrap">
+                                    {(selectedSection.style?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).map((c, i) => (
+                                        <input
+                                            key={i}
+                                            type="color"
+                                            value={c}
+                                            onChange={(e) => {
+                                                const colors = [...(selectedSection.style?.background?.animatedGradientColors || ["#667eea", "#764ba2"])];
+                                                colors[i] = e.target.value;
+                                                updateSection(selectedSection!.id, {
+                                                    style: {
+                                                        ...selectedSection!.style,
+                                                        background: { ...selectedSection!.style?.background, type: "animated_gradient", animatedGradientColors: colors }
+                                                    }
+                                                });
+                                            }}
+                                            className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
+                                        />
+                                    ))}
+                                    {(selectedSection.style?.background?.animatedGradientColors || ["#667eea", "#764ba2"]).length < 4 && (
+                                        <button
+                                            onClick={() => {
+                                                const colors = [...(selectedSection.style?.background?.animatedGradientColors || ["#667eea", "#764ba2"]), "#43e97b"];
+                                                updateSection(selectedSection!.id, {
+                                                    style: {
+                                                        ...selectedSection!.style,
+                                                        background: { ...selectedSection!.style?.background, type: "animated_gradient", animatedGradientColors: colors }
+                                                    }
+                                                });
+                                            }}
+                                            className="h-9 w-9 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-400 hover:border-zinc-500 hover:text-zinc-600 transition-colors flex items-center justify-center text-lg"
+                                            title="Add color"
+                                        >+</button>
+                                    )}
+                                </div>
+                            </Field>
+                            <Field label={`Speed (${selectedSection.style?.background?.animatedGradientSpeed || 8}s)`}>
+                                <input
+                                    type="range"
+                                    min="4" max="20" step="1"
+                                    value={selectedSection.style?.background?.animatedGradientSpeed ?? 8}
+                                    onChange={(e) => updateSection(selectedSection!.id, {
+                                        style: {
+                                            ...selectedSection!.style,
+                                            background: { ...selectedSection!.style?.background, type: "animated_gradient", animatedGradientSpeed: parseInt(e.target.value) }
+                                        }
                                     })}
                                     className="w-full accent-blue-600"
                                 />
@@ -1284,6 +1668,158 @@ export function PropertiesPanel() {
                             rows={6}
                         />
                     </Field>
+                )}
+
+                {/* Heading Block */}
+                {selectedBlock.type === "heading" && (
+                    <>
+                        <Field label="Heading Text">
+                            <Input
+                                value={selectedBlock.text}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { text: e.target.value })}
+                                placeholder="Enter heading text"
+                            />
+                        </Field>
+                        <Field label="Level">
+                            <div className="flex gap-1">
+                                {(["h1", "h2", "h3"] as const).map((lvl) => (
+                                    <button
+                                        key={lvl}
+                                        onClick={() => updateBlock(parentSectionId!, selectedBlock!.id, { level: lvl })}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                            selectedBlock.level === lvl
+                                                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                                                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                                        }`}
+                                    >
+                                        {lvl.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </Field>
+                    </>
+                )}
+
+                {/* Divider Block */}
+                {selectedBlock.type === "divider" && (
+                    <Field label="Style">
+                        <div className="flex gap-1">
+                            {(["solid", "dashed", "dotted"] as const).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => updateBlock(parentSectionId!, selectedBlock!.id, { style: s })}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
+                                        selectedBlock.style === s
+                                            ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                                    }`}
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    </Field>
+                )}
+
+                {/* Image Display Block */}
+                {selectedBlock.type === "image_display" && (
+                    <>
+                        <Field label="Upload Image">
+                            <Input
+                                type="file"
+                                accept="image/jpeg,image/png,image/gif,image/webp"
+                                onChange={async (e) => {
+                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                    if (!file) return;
+                                    try {
+                                        const result = await uploadFile(file, "images");
+                                        updateBlock(parentSectionId!, selectedBlock!.id, { imageUrl: result.url });
+                                    } catch (err) {
+                                        console.error("Image upload failed:", err);
+                                    }
+                                }}
+                            />
+                        </Field>
+                        <Field label="Or paste URL">
+                            <Input
+                                value={selectedBlock.imageUrl || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { imageUrl: e.target.value })}
+                                placeholder="https://example.com/image.jpg"
+                            />
+                        </Field>
+                        <Field label="Alt Text">
+                            <Input
+                                value={selectedBlock.alt || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { alt: e.target.value })}
+                                placeholder="Describe the image"
+                            />
+                        </Field>
+                        <Field label="Caption">
+                            <Input
+                                value={selectedBlock.caption || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { caption: e.target.value })}
+                                placeholder="Optional caption"
+                            />
+                        </Field>
+                    </>
+                )}
+
+                {/* Video Embed Block */}
+                {selectedBlock.type === "video_embed" && (
+                    <>
+                        <Field label="Upload Video">
+                            <Input
+                                type="file"
+                                accept="video/mp4,video/webm,video/quicktime"
+                                onChange={async (e) => {
+                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                    if (!file) return;
+                                    try {
+                                        const result = await uploadFile(file, "videos");
+                                        updateBlock(parentSectionId!, selectedBlock!.id, { videoUrl: result.url });
+                                    } catch (err) {
+                                        console.error("Video upload failed:", err);
+                                    }
+                                }}
+                            />
+                            <p className="text-[11px] text-zinc-400 mt-1">MP4, WebM, or MOV. Max 50MB.</p>
+                        </Field>
+                        <Field label="Or paste URL">
+                            <Input
+                                value={selectedBlock.videoUrl || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { videoUrl: e.target.value })}
+                                placeholder="https://example.com/video.mp4"
+                            />
+                        </Field>
+                        <Field label="Caption">
+                            <Input
+                                value={selectedBlock.caption || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { caption: e.target.value })}
+                                placeholder="Optional caption"
+                            />
+                        </Field>
+                    </>
+                )}
+
+                {/* Quote Block */}
+                {selectedBlock.type === "quote" && (
+                    <>
+                        <Field label="Quote Text">
+                            <Textarea
+                                value={selectedBlock.text}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { text: e.target.value })}
+                                rows={4}
+                                placeholder="Enter the quote..."
+                            />
+                        </Field>
+                        <Field label="Attribution">
+                            <Input
+                                value={selectedBlock.attribution || ""}
+                                onChange={(e) => updateBlock(parentSectionId!, selectedBlock!.id, { attribution: e.target.value })}
+                                placeholder="e.g. John Doe, CEO"
+                            />
+                        </Field>
+                    </>
                 )}
 
                 {/* Question Block */}

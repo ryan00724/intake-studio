@@ -213,6 +213,39 @@ export function DndWrapper({ children }: { children: React.ReactNode }) {
                         buttonLabel: "Book a Call",
                         openInNewTab: true,
                     };
+                 } else if (activeData.type === "heading") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "heading",
+                        text: "Heading",
+                        level: "h2",
+                    };
+                 } else if (activeData.type === "divider") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "divider",
+                        style: "solid",
+                    };
+                 } else if (activeData.type === "image_display") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "image_display",
+                        imageUrl: "",
+                        alt: "",
+                    };
+                 } else if (activeData.type === "video_embed") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "video_embed",
+                        videoUrl: "",
+                    };
+                 } else if (activeData.type === "quote") {
+                    newBlock = {
+                        id: generateId(),
+                        type: "quote",
+                        text: "",
+                        attribution: "",
+                    };
                  } else {
                     newBlock = { 
                         id: generateId(), 

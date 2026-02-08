@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const workspaceId = searchParams.get("workspace_id");
   
   // Return all intakes if no workspace specified, or filter
-  let query = supabaseAdmin.from("intakes").select("id, title, slug, is_published, created_at, updated_at, workspace_id, submissions(count)");
+  let query = supabaseAdmin.from("intakes").select("id, title, slug, is_published, created_at, updated_at, workspace_id, draft_json, submissions(count)");
 
   if (workspaceId) {
     query = query.eq("workspace_id", workspaceId);

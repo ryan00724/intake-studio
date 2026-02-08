@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/src/components/theme/ThemeToggle";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
-import { Layers, Type, ListChecks, Grid, Briefcase } from "lucide-react";
+import { Layers, Type, ListChecks, Grid, Briefcase, Monitor } from "lucide-react";
 
 const CATEGORIES = [
   { id: "structure", label: "Structure", icon: Layers },
+  { id: "presentation", label: "Presentation", icon: Monitor },
   { id: "text", label: "Text", icon: Type },
   { id: "choices", label: "Choices", icon: ListChecks },
   { id: "visual", label: "Visual", icon: Grid },

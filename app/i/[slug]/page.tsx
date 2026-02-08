@@ -1,11 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { PublishedIntake } from "@/types/editor";
 import { GuidedExperience } from "@/src/components/experience/GuidedExperience";
 import { PersonalizationParams } from "@/src/lib/experience/personalize";
 import { loadPublishedFromIdb, PublishedPointer } from "@/lib/published-storage";
+
+/** Injects a <link rel="preload"> and <link rel="preconnect"> for a video URL so
+ *  the browser starts downloading it as early as possible. */
+function preloadVideoUrl(url: string): (() => void) | undefined {
+  if (!url || typeof document === "undefined") return;
+  const href = url.startsWith("http") || url.startsWith("/") ? url : `/${url}`;
+
+  // Preconnect to the origin (saves DNS + TLS handshake)
+  try {
+    const origin = new URL(href, window.location.origin).origin;
+    if (origin !== window.location.origin) {
+      const preconnect = document.createElement("link");
+      preconnect.rel = "preconnect";
+      preconnect.href = origin;
+      preconnect.crossOrigin = "anonymous";
+      document.head.appendChild(preconnect);
+    }
+  } catch { /* ignore invalid URLs */ }
+
+  // Preload the video itself
+  const preload = document.createElement("link");
+  preload.rel = "preload";
+  preload.as = "video";
+  preload.href = href;
+  preload.crossOrigin = "anonymous";
+  document.head.appendChild(preload);
+
+  return () => {
+    try { document.head.removeChild(preload); } catch {}
+  };
+}
 
 export default function PublishedIntakePage() {
   const params = useParams();
@@ -14,6 +45,7 @@ export default function PublishedIntakePage() {
 
   const [intake, setIntake] = useState<PublishedIntake | null>(null);
   const [loading, setLoading] = useState(true);
+  const preloadCleanup = useRef<(() => void) | undefined>();
 
   useEffect(() => {
     let isMounted = true;
@@ -35,6 +67,13 @@ export default function PublishedIntakePage() {
               metadata: data.published_json.metadata || { title: data.title },
               publishedAt: Date.now(),
             };
+
+            // Start preloading the video as soon as we have the data
+            const videoUrl = published.metadata?.theme?.background?.videoUrl;
+            if (videoUrl && published.metadata?.theme?.background?.type === "video") {
+              preloadCleanup.current = preloadVideoUrl(videoUrl);
+            }
+
             setIntake(published);
             return; // Found in DB, done
           }
@@ -68,6 +107,7 @@ export default function PublishedIntakePage() {
 
     return () => {
       isMounted = false;
+      preloadCleanup.current?.();
     };
   }, [slug]);
   if (loading) {

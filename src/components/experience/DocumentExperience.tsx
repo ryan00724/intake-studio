@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { IntakeSection, IntakeBlock, InputType, IntakeTheme } from "@/types/editor";
 import { personalizeText, PersonalizationParams } from "@/src/lib/experience/personalize";
 import { Moodboard } from "@/src/components/shared/Moodboard";
 import { ThisNotThisBoard } from "@/src/components/shared/ThisNotThisBoard";
+import { GRADIENT_PRESETS, getPatternCss } from "@/lib/background-presets";
 
 interface DocumentExperienceProps {
   sections: IntakeSection[];
@@ -20,14 +21,26 @@ export function DocumentExperience({
   intro,
   theme,
 }: DocumentExperienceProps) {
-  const [resolvedVideoUrl, setResolvedVideoUrl] = React.useState<string | undefined>(undefined);
   const hasVideoBackground = theme?.background?.type === "video" && Boolean(theme.background.videoUrl);
-  const [videoReady, setVideoReady] = React.useState(false);
+  const audioEnabled = theme?.background?.audioEnabled ?? false;
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = React.useState(true);
+  const [videoReady, setVideoReady] = React.useState(!hasVideoBackground);
 
+  // Preload the video URL so the browser starts fetching immediately
   React.useEffect(() => {
-    if (!hasVideoBackground) setVideoReady(true);
-    else setVideoReady(false);
-  }, [hasVideoBackground]);
+    if (!hasVideoBackground) { setVideoReady(true); return; }
+    setVideoReady(false);
+    const url = theme?.background?.videoUrl;
+    if (url && typeof document !== "undefined") {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "video";
+      link.href = url.startsWith("http") || url.startsWith("/") ? url : `/${url}`;
+      document.head.appendChild(link);
+      return () => { document.head.removeChild(link); };
+    }
+  }, [hasVideoBackground, theme?.background?.videoUrl]);
 
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
@@ -35,23 +48,8 @@ export function DocumentExperience({
   const cardStyle: React.CSSProperties | undefined = hasCardBackground
     ? { backgroundColor: cardBackgroundColor }
     : undefined;
-  React.useEffect(() => {
-    const url = theme?.background?.type === "video" ? theme.background.videoUrl : undefined;
-    if (!url) {
-      setResolvedVideoUrl(undefined);
-      return;
-    }
-    fetch(`/api/media-url?url=${encodeURIComponent(url)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        const nextUrl = data?.signedUrl || url;
-        setResolvedVideoUrl(nextUrl);
-      })
-      .catch(() => {
-        setResolvedVideoUrl(url);
-      });
-  }, [theme?.background?.type, theme?.background?.videoUrl]);
   const bgStyle: React.CSSProperties = {};
+  let animatedGradientClass = "";
   if (theme?.background?.type === "color") {
     bgStyle.backgroundColor = theme.background.color;
   } else if (theme?.background?.type === "image" && theme.background.imageUrl) {
@@ -61,6 +59,25 @@ export function DocumentExperience({
     bgStyle.backgroundAttachment = "fixed";
   } else if (theme?.background?.type === "video") {
     // Video handled via element
+  } else if (theme?.background?.type === "gradient" && theme.background.gradientPreset) {
+    const preset = GRADIENT_PRESETS[theme.background.gradientPreset];
+    if (preset) bgStyle.backgroundImage = preset.css;
+  } else if (theme?.background?.type === "pattern" && theme.background.patternType) {
+    const patCss = getPatternCss(
+      theme.background.patternType,
+      theme.background.patternColor || "#00000015",
+      theme.background.patternBgColor || "#ffffff"
+    );
+    bgStyle.backgroundColor = patCss.backgroundColor;
+    bgStyle.backgroundImage = patCss.backgroundImage;
+    if (patCss.backgroundSize) bgStyle.backgroundSize = patCss.backgroundSize;
+  } else if (theme?.background?.type === "animated_gradient") {
+    const colors = theme.background.animatedGradientColors || ["#667eea", "#764ba2"];
+    bgStyle.backgroundImage = `linear-gradient(135deg, ${colors.join(", ")})`;
+    bgStyle.backgroundSize = "200% 200%";
+    // @ts-ignore
+    bgStyle.animationDuration = `${theme.background.animatedGradientSpeed || 8}s`;
+    animatedGradientClass = "animate-gradient-shift";
   }
 
   const containerStyle: React.CSSProperties = {};
@@ -73,41 +90,48 @@ export function DocumentExperience({
   }
 
   return (
-    <>
-    <AnimatePresence>
-      {!videoReady && (
-        <motion.div
-          key="video-loader"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black"
-        >
-          <div className="relative flex items-center justify-center">
-            <div className="w-10 h-10 rounded-full border-2 border-zinc-700 border-t-white animate-spin" />
-          </div>
-          <p className="mt-4 text-sm text-zinc-500 animate-pulse">Loading experience...</p>
-        </motion.div>
-      )}
-    </AnimatePresence>
-
     <div 
-        className={`min-h-screen transition-all duration-700 relative overflow-y-auto ${videoReady ? "opacity-100" : "opacity-0"}`}
+        className={`min-h-screen relative overflow-y-auto ${animatedGradientClass}`}
         style={{ ...bgStyle, ...containerStyle }}
     >
-        {theme?.background?.type === "video" && (resolvedVideoUrl || theme.background.videoUrl) && (
+        {theme?.background?.type === "video" && theme.background.videoUrl && (
+            <>
             <video
-                key={resolvedVideoUrl || theme.background.videoUrl}
+                ref={videoRef}
+                key={theme.background.videoUrl}
                 autoPlay
                 loop
-                muted
+                muted={isMuted}
                 playsInline
                 preload="auto"
                 crossOrigin="anonymous"
-                className="absolute inset-0 w-full h-full object-cover z-0 bg-black"
-                src={(() => { const u = resolvedVideoUrl || theme?.background?.videoUrl || ""; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
-                onCanPlay={() => setVideoReady(true)}
+                // @ts-expect-error -- fetchPriority is valid HTML but not yet in React types
+                fetchPriority="high"
+                className={`absolute inset-0 w-full h-full object-cover z-0 bg-black transition-opacity duration-500 ${videoReady ? "opacity-100" : "opacity-0"}`}
+                src={(() => { const u = theme.background.videoUrl; return u.startsWith("http") || u.startsWith("/") ? u : `/${u}`; })()}
+                onLoadedData={() => setVideoReady(true)}
             />
+            {audioEnabled && videoReady && (
+                <button
+                    onClick={() => {
+                        setIsMuted((m) => {
+                            const next = !m;
+                            if (videoRef.current) videoRef.current.muted = next;
+                            return next;
+                        });
+                    }}
+                    className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-3 py-2 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-medium hover:bg-black/80 transition-colors shadow-lg"
+                    title={isMuted ? "Unmute" : "Mute"}
+                >
+                    {isMuted ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                    )}
+                    {isMuted ? "Unmute" : "Mute"}
+                </button>
+            )}
+            </>
         )}
         
         {theme?.background?.type === "image" && theme.background.imageUrl && (
@@ -184,7 +208,6 @@ export function DocumentExperience({
             </div>
         </div>
     </div>
-    </>
   );
 }
 
@@ -202,6 +225,74 @@ function BlockRenderer({
       <div className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed break-words">
         {personalizeText(block.text, personalization)}
       </div>
+    );
+  }
+
+  if (block.type === "heading") {
+    const Tag = block.level || "h2";
+    const sizeClass = Tag === "h1" ? "text-4xl font-bold" : Tag === "h2" ? "text-2xl font-semibold" : "text-xl font-medium";
+    return (
+      <Tag className={`${sizeClass} text-zinc-900 dark:text-zinc-100 break-words`}>
+        {personalizeText(block.text, personalization)}
+      </Tag>
+    );
+  }
+
+  if (block.type === "divider") {
+    const borderStyle = block.style === "dashed" ? "border-dashed" : block.style === "dotted" ? "border-dotted" : "border-solid";
+    return <hr className={`border-t-2 border-zinc-300 dark:border-zinc-600 my-2 ${borderStyle}`} />;
+  }
+
+  if (block.type === "image_display") {
+    if (!block.imageUrl) return null;
+    return (
+      <figure className="space-y-2">
+        <img
+          src={block.imageUrl}
+          alt={block.alt || ""}
+          className="w-full rounded-xl object-cover"
+        />
+        {block.caption && (
+          <figcaption className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+            {personalizeText(block.caption, personalization)}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+
+  if (block.type === "video_embed") {
+    if (!block.videoUrl) return null;
+    return (
+      <div className="space-y-2">
+        <video
+          src={block.videoUrl}
+          controls
+          playsInline
+          preload="metadata"
+          className="w-full rounded-xl bg-black"
+        />
+        {block.caption && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+            {personalizeText(block.caption, personalization)}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (block.type === "quote") {
+    return (
+      <blockquote className="border-l-4 border-zinc-400 dark:border-zinc-500 pl-5 py-2 my-2">
+        <p className="text-lg italic text-zinc-700 dark:text-zinc-300 leading-relaxed break-words">
+          {personalizeText(block.text, personalization)}
+        </p>
+        {block.attribution && (
+          <footer className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            — {personalizeText(block.attribution, personalization)}
+          </footer>
+        )}
+      </blockquote>
     );
   }
 

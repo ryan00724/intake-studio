@@ -1,6 +1,6 @@
 export type InputType = "short" | "long" | "select" | "multi" | "slider" | "date" | "file";
 
-export type BlockType = "context" | "question" | "image_choice" | "image_moodboard" | "this_not_this" | "link_preview" | "book_call";
+export type BlockType = "context" | "question" | "image_choice" | "image_moodboard" | "this_not_this" | "link_preview" | "book_call" | "heading" | "divider" | "image_display" | "video_embed" | "quote";
 
 export interface BaseBlock {
   id: string;
@@ -90,33 +90,77 @@ export interface BookCallBlock extends BaseBlock {
   requiredToContinue?: boolean;
 }
 
-export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | ImageMoodboardBlock | ThisNotThisBlock | LinkPreviewBlock | BookCallBlock;
+export interface HeadingBlock extends BaseBlock {
+  type: "heading";
+  text: string;
+  level: "h1" | "h2" | "h3";
+}
+
+export interface DividerBlock extends BaseBlock {
+  type: "divider";
+  style: "solid" | "dashed" | "dotted";
+}
+
+export interface ImageDisplayBlock extends BaseBlock {
+  type: "image_display";
+  imageUrl: string;
+  alt?: string;
+  caption?: string;
+}
+
+export interface VideoEmbedBlock extends BaseBlock {
+  type: "video_embed";
+  videoUrl: string;
+  caption?: string;
+}
+
+export interface QuoteBlock extends BaseBlock {
+  type: "quote";
+  text: string;
+  attribution?: string;
+}
+
+export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | ImageMoodboardBlock | ThisNotThisBlock | LinkPreviewBlock | BookCallBlock | HeadingBlock | DividerBlock | ImageDisplayBlock | VideoEmbedBlock | QuoteBlock;
 
 export interface IntakeTheme {
     accentColor?: string;
     cardBackgroundColor?: string;
     fontColor?: string;
     background?: {
-        type: "none" | "color" | "image" | "video";
+        type: "none" | "color" | "image" | "video" | "gradient" | "pattern" | "animated_gradient";
         color?: string;
         imageUrl?: string;
         videoUrl?: string;
         overlayOpacity?: number;
         overlayColor?: string;
         blurPx?: number;
+        audioEnabled?: boolean;
+        gradientPreset?: string;
+        patternType?: string;
+        patternColor?: string;
+        patternBgColor?: string;
+        animatedGradientColors?: string[];
+        animatedGradientSpeed?: number;
     };
 }
 
 export interface IntakeSectionStyle {
     color?: string;
     background?: {
-        type: "none" | "color" | "image" | "video";
+        type: "none" | "color" | "image" | "video" | "gradient" | "pattern" | "animated_gradient";
         color?: string;
         imageUrl?: string;
         videoUrl?: string;
         overlayOpacity?: number;
         overlayColor?: string;
         blurPx?: number;
+        audioEnabled?: boolean;
+        gradientPreset?: string;
+        patternType?: string;
+        patternColor?: string;
+        patternBgColor?: string;
+        animatedGradientColors?: string[];
+        animatedGradientSpeed?: number;
     };
 }
 
