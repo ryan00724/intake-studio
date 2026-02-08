@@ -44,10 +44,14 @@ export function DocumentExperience({
 
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
+  const hasVisualBackground = theme?.background?.type && theme.background.type !== "none";
   const cardClassName = `${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"} backdrop-blur-md shadow-lg rounded-2xl p-8`;
-  const cardStyle: React.CSSProperties | undefined = hasCardBackground
-    ? { backgroundColor: cardBackgroundColor }
-    : undefined;
+  const cardStyle: React.CSSProperties | undefined = (() => {
+    const s: React.CSSProperties = {};
+    if (hasCardBackground) s.backgroundColor = cardBackgroundColor;
+    if (theme?.fontColor) s.color = theme.fontColor;
+    return Object.keys(s).length > 0 ? s : undefined;
+  })();
   const bgStyle: React.CSSProperties = {};
   let animatedGradientClass = "";
   if (theme?.background?.type === "color") {
@@ -158,7 +162,7 @@ export function DocumentExperience({
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-12 space-y-16 pb-32">
             {/* Header */}
-            <div className={theme?.background?.type !== "none" ? cardClassName : ""} style={theme?.background?.type !== "none" ? cardStyle : undefined}>
+            <div className={`${hasVisualBackground ? cardClassName : ""} ${theme?.fontColor ? "font-color-override" : ""}`} style={hasVisualBackground ? cardStyle : (theme?.fontColor ? { color: theme.fontColor } : undefined)}>
                 <header className="space-y-4 text-center mb-8">
                     {title && (
                     <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -191,7 +195,7 @@ export function DocumentExperience({
                         {section.blocks.map((block) => (
                             <div 
                                 key={block.id}
-                                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm"
+                                className={`bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm ${theme?.fontColor ? "font-color-override" : ""}`}
                                 style={cardStyle}
                             >
                                 <BlockRenderer

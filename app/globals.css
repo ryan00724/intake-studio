@@ -63,6 +63,23 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Custom font color override – un-layered CSS beats Tailwind v4 @layer utilities */
+.font-color-override,
+.font-color-override h1,
+.font-color-override h2,
+.font-color-override h3,
+.font-color-override h4,
+.font-color-override p,
+.font-color-override label,
+.font-color-override span,
+.font-color-override blockquote,
+.font-color-override figcaption,
+.font-color-override footer,
+.font-color-override li,
+.font-color-override div:not(.preserve-color) {
+  color: inherit;
+}
+
 /* Animated gradient background shift */
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }

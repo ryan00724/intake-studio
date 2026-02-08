@@ -291,15 +291,21 @@ export function GuidedExperience({
 
   const cardBackgroundColor = theme?.cardBackgroundColor;
   const hasCardBackground = Boolean(cardBackgroundColor);
+  const hasVisualBackground = activeBackground?.type && activeBackground.type !== "none";
+  const fontColor = theme?.fontColor;
+  const cardStyle: React.CSSProperties | undefined = (() => {
+    const s: React.CSSProperties = {};
+    if (hasVisualBackground && hasCardBackground) s.backgroundColor = cardBackgroundColor;
+    if (fontColor) s.color = fontColor;
+    return Object.keys(s).length > 0 ? s : undefined;
+  })();
   const commonProps = {
       theme,
       // If we are in a theme mode, wrap content in a card style visually
-      cardClassName: activeBackground?.type !== "none"
+      cardClassName: `${hasVisualBackground
         ? `backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto ${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"}`
-        : "",
-      cardStyle: activeBackground?.type !== "none" && hasCardBackground
-        ? { backgroundColor: cardBackgroundColor }
-        : undefined
+        : ""} ${fontColor ? "font-color-override" : ""}`.trim(),
+      cardStyle
   };
   return (
     <div 
