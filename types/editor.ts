@@ -124,8 +124,10 @@ export type IntakeBlock = ContextBlock | QuestionBlock | ImageChoiceBlock | Imag
 
 export interface IntakeTheme {
     accentColor?: string;
-    cardBackgroundColor?: string;
-    fontColor?: string;
+    /** "light" = white card + dark text, "dark" = dark card + light text. Unset = auto from system theme. */
+    cardStyle?: "light" | "dark";
+    cardBackgroundColor?: string;  // @deprecated — use cardStyle
+    fontColor?: string;            // @deprecated — use cardStyle
     background?: {
         type: "none" | "color" | "image" | "video" | "gradient" | "pattern" | "animated_gradient";
         color?: string;

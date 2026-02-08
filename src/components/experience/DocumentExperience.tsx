@@ -42,16 +42,11 @@ export function DocumentExperience({
     }
   }, [hasVideoBackground, theme?.background?.videoUrl]);
 
-  const cardBackgroundColor = theme?.cardBackgroundColor;
-  const hasCardBackground = Boolean(cardBackgroundColor);
   const hasVisualBackground = theme?.background?.type && theme.background.type !== "none";
-  const cardClassName = `${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"} backdrop-blur-md shadow-lg rounded-2xl p-8`;
-  const cardStyle: React.CSSProperties | undefined = (() => {
-    const s: React.CSSProperties = {};
-    if (hasCardBackground) s.backgroundColor = cardBackgroundColor;
-    if (theme?.fontColor) s.color = theme.fontColor;
-    return Object.keys(s).length > 0 ? s : undefined;
-  })();
+  const resolvedCardStyle = theme?.cardStyle || "light";
+  const isDarkCard = resolvedCardStyle === "dark";
+  const cardBg = isDarkCard ? "bg-zinc-900/90 text-zinc-100" : "bg-white/90 text-zinc-900";
+  const cardClassName = `intake-card ${cardBg} backdrop-blur-md shadow-lg rounded-2xl p-8`;
   const bgStyle: React.CSSProperties = {};
   let animatedGradientClass = "";
   if (theme?.background?.type === "color") {
@@ -89,9 +84,7 @@ export function DocumentExperience({
     // @ts-ignore
     containerStyle["--accent-color"] = theme.accentColor;
   }
-  if (theme?.fontColor) {
-    containerStyle.color = theme.fontColor;
-  }
+  // fontColor removed — card style handles text color via cardBg classes
 
   return (
     <div 
@@ -162,7 +155,7 @@ export function DocumentExperience({
 
         <div className="relative z-10 max-w-3xl mx-auto px-6 py-12 space-y-16 pb-32">
             {/* Header */}
-            <div className={`${hasVisualBackground ? cardClassName : ""} ${theme?.fontColor ? "font-color-override" : ""}`} style={hasVisualBackground ? cardStyle : (theme?.fontColor ? { color: theme.fontColor } : undefined)}>
+            <div className={hasVisualBackground ? cardClassName : ""}>
                 <header className="space-y-4 text-center mb-8">
                     {title && (
                     <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -180,8 +173,8 @@ export function DocumentExperience({
                 <div className="space-y-12">
                     {sections.map((section) => (
                     <section key={section.id} className="space-y-6">
-                        <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
-                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50" style={{ color: section.style?.color || theme?.accentColor }}>
+                        <div className={`border-b pb-4 ${isDarkCard ? "border-zinc-700" : "border-zinc-200"}`}>
+                        <h2 className="text-xl font-semibold" style={{ color: section.style?.color || theme?.accentColor }}>
                             {personalizeText(section.title, personalization)}
                         </h2>
                         {section.description && (
@@ -195,8 +188,7 @@ export function DocumentExperience({
                         {section.blocks.map((block) => (
                             <div 
                                 key={block.id}
-                                className={`bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm ${theme?.fontColor ? "font-color-override" : ""}`}
-                                style={cardStyle}
+                                className={`intake-card rounded-xl border p-6 shadow-sm ${isDarkCard ? "bg-zinc-900 border-zinc-700 text-zinc-100" : "bg-white border-zinc-200 text-zinc-900"}`}
                             >
                                 <BlockRenderer
                                     block={block}
@@ -309,7 +301,7 @@ function BlockRenderer({
             <div className="space-y-1">
                 <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
                     {label}
-                    {block.required && <span className="text-indigo-500 ml-1">*</span>}
+                    {block.required && <span className="preserve-color text-red-500 ml-1">*</span>}
                 </label>
                 {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
             </div>
@@ -421,7 +413,7 @@ function BlockRenderer({
           <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
             {label}
             {block.required && (
-              <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">
+              <span className="preserve-color ml-2 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-600 bg-red-500/10">
                 Required
               </span>
             )}
@@ -443,7 +435,7 @@ function BlockRenderer({
       <div className="space-y-2">
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
           {label}
-          {block.required && <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">Required</span>}
+          {block.required && <span className="preserve-color ml-2 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-600 bg-red-500/10">Required</span>}
         </label>
         {helperText && <p className="text-sm text-zinc-500 dark:text-zinc-400">{helperText}</p>}
         <div className="flex items-center gap-2 p-3 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-400 text-sm">

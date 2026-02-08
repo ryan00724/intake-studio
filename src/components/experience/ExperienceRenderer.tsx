@@ -8,6 +8,7 @@ interface ExperienceRendererProps {
   sections: IntakeSection[];
   edges?: IntakeEdge[];
   mode: "guided" | "document";
+  slug?: string; // For submission to API on published pages
   personalization?: PersonalizationParams;
   title?: string;
   intro?: string;
@@ -23,6 +24,7 @@ export function ExperienceRenderer({
   sections,
   edges,
   mode,
+  slug,
   personalization,
   title,
   intro,
@@ -49,6 +51,7 @@ export function ExperienceRenderer({
     <GuidedExperience
       sections={sections}
       edges={edges}
+      slug={slug}
       personalization={personalization}
       title={title}
       intro={intro}

@@ -283,89 +283,34 @@ export function PropertiesPanel() {
                     </div>
                 </Field>
 
-                <Field label="Card Background Color">
-                    <div className="flex gap-2">
-                        <input 
-                            type="color" 
-                            value={metadata.theme?.cardBackgroundColor || "#ffffff"}
-                            onChange={(e) => {
-                                const next = e.target.value;
-                                updateMetadata({ 
-                                    theme: { 
-                                        ...metadata.theme, 
-                                        cardBackgroundColor: next 
-                                    } 
-                                });
-                            }}
-                            className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
-                        />
-                        <Input
-                            value={metadata.theme?.cardBackgroundColor || ""}
-                            onChange={(e) => updateMetadata({ 
-                                theme: { 
-                                    ...metadata.theme, 
-                                    cardBackgroundColor: e.target.value || undefined 
-                                } 
-                            })}
-                            placeholder="#ffffff"
-                            className="flex-1"
-                        />
-                        <Button 
-                            variant="ghost" 
-                            onClick={() => updateMetadata({ 
-                                theme: { 
-                                    ...metadata.theme, 
-                                    cardBackgroundColor: undefined 
-                                } 
-                            })}
-                            title="Clear card color"
-                        >
-                            ✕
-                        </Button>
+                <Field label="Card Style">
+                    <div className="flex items-center p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60">
+                        {([
+                            { key: "light" as const, label: "Light" },
+                            { key: "dark" as const, label: "Dark" },
+                        ]).map((opt) => (
+                            <button
+                                key={opt.key}
+                                onClick={() => updateMetadata({
+                                    theme: {
+                                        ...metadata.theme,
+                                        cardStyle: opt.key,
+                                        // Clear deprecated fields
+                                        cardBackgroundColor: undefined,
+                                        fontColor: undefined,
+                                    }
+                                })}
+                                className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                    (metadata.theme?.cardStyle || "light") === opt.key
+                                        ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-1">Applies to the main intake cards.</p>
-                </Field>
-
-                <Field label="Font Color">
-                    <div className="flex gap-2">
-                        <input 
-                            type="color" 
-                            value={metadata.theme?.fontColor || "#18181b"}
-                            onChange={(e) => {
-                                updateMetadata({ 
-                                    theme: { 
-                                        ...metadata.theme, 
-                                        fontColor: e.target.value 
-                                    } 
-                                });
-                            }}
-                            className="h-9 w-9 p-0.5 rounded-lg border border-zinc-200 cursor-pointer bg-white"
-                        />
-                        <Input
-                            value={metadata.theme?.fontColor || ""}
-                            onChange={(e) => updateMetadata({ 
-                                theme: { 
-                                    ...metadata.theme, 
-                                    fontColor: e.target.value || undefined 
-                                } 
-                            })}
-                            placeholder="#18181b"
-                            className="flex-1"
-                        />
-                        <Button 
-                            variant="ghost" 
-                            onClick={() => updateMetadata({ 
-                                theme: { 
-                                    ...metadata.theme, 
-                                    fontColor: undefined 
-                                } 
-                            })}
-                            title="Clear font color"
-                        >
-                            ✕
-                        </Button>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 mt-1">Overrides text color in the experience.</p>
+                    <p className="text-[11px] text-zinc-400 mt-1">Controls card background and text colour.</p>
                 </Field>
 
                 <Field label="Background Type">

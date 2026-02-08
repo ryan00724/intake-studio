@@ -98,9 +98,8 @@ export function GuidedExperience({
     // @ts-ignore
     containerStyle["--accent-color"] = theme.accentColor;
   }
-  if (theme?.fontColor) {
-    containerStyle.color = theme.fontColor;
-  }
+  // cardStyle: "light" or "dark" controls card appearance
+  const resolvedCardStyle = theme?.cardStyle || "light";
 
   // Submit answers when reaching the completion screen
   React.useEffect(() => {
@@ -289,23 +288,18 @@ export function GuidedExperience({
     }
   }, [hasVideoBackground, activeBackground?.videoUrl]);
 
-  const cardBackgroundColor = theme?.cardBackgroundColor;
-  const hasCardBackground = Boolean(cardBackgroundColor);
   const hasVisualBackground = activeBackground?.type && activeBackground.type !== "none";
-  const fontColor = theme?.fontColor;
-  const cardStyle: React.CSSProperties | undefined = (() => {
-    const s: React.CSSProperties = {};
-    if (hasVisualBackground && hasCardBackground) s.backgroundColor = cardBackgroundColor;
-    if (fontColor) s.color = fontColor;
-    return Object.keys(s).length > 0 ? s : undefined;
-  })();
+  const isDarkCard = resolvedCardStyle === "dark";
+  const cardBg = isDarkCard ? "bg-zinc-900/90 text-zinc-100" : "bg-white/90 text-zinc-900";
+  // Border and inner-block colors that match the card style
+  const borderColor = isDarkCard ? "border-zinc-700" : "border-zinc-200";
+  const innerBlockBg = isDarkCard ? "bg-zinc-800/60" : "bg-white";
   const commonProps = {
       theme,
-      // If we are in a theme mode, wrap content in a card style visually
       cardClassName: `${hasVisualBackground
-        ? `backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto ${hasCardBackground ? "" : "bg-white/90 dark:bg-black/80"}`
-        : ""} ${fontColor ? "font-color-override" : ""}`.trim(),
-      cardStyle
+        ? `intake-card backdrop-blur-md shadow-lg rounded-2xl p-8 max-w-2xl mx-auto ${cardBg}`
+        : ""}`.trim(),
+      cardStyle: undefined as React.CSSProperties | undefined,
   };
   return (
     <div 
@@ -437,9 +431,9 @@ export function GuidedExperience({
                                 className="w-full space-y-8"
                                 >
                                 {/* Section Header */}
-                                <div className="space-y-2 border-b border-zinc-100 dark:border-zinc-800 pb-4 mb-6">
+                                <div className={`space-y-2 border-b ${borderColor} pb-4 mb-6`}>
                                     <h2 
-                                        className="text-xl font-semibold text-zinc-900 dark:text-zinc-50"
+                                        className="text-xl font-semibold"
                                         style={{ color: currentSection.style?.color || theme?.accentColor }}
                                     >
                                     {personalizeText(currentSection.title, personalization)}
@@ -447,7 +441,7 @@ export function GuidedExperience({
                                 </div>
 
                                 {/* Blocks */}
-                                <div className="space-y-6 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+                                <div className={`space-y-6 ${innerBlockBg} rounded-xl border ${borderColor} p-6 shadow-sm`}>
                                     {currentSection.blocks.map((block) => (
                                     <BlockRenderer
                                         key={block.id}
@@ -463,7 +457,7 @@ export function GuidedExperience({
                             </AnimatePresence>
 
                             {/* Navigation */}
-                            <div className="flex items-center justify-between w-full mt-12 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                            <div className={`flex items-center justify-between w-full mt-12 pt-6 border-t ${borderColor}`}>
                                 <button
                                 onClick={handleBack}
                                 className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 transition-all duration-200 ease-in-out transform-gpu will-change-transform hover:scale-105 active:scale-95"
@@ -600,7 +594,7 @@ function BlockRenderer({
             <div className="space-y-1">
                 <label className="block text-xl font-medium text-zinc-900 dark:text-zinc-200">
                     {label}
-                    {block.required && <span className="text-indigo-500 ml-1">*</span>}
+                    {block.required && <span className="preserve-color text-red-500 ml-1">*</span>}
                 </label>
                 {helperText && <p className="text-base text-zinc-500 dark:text-zinc-400">{helperText}</p>}
             </div>
@@ -706,12 +700,11 @@ function BlockRenderer({
 
       return (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
+          <label className="block text-sm font-medium">
             {label}
             {block.required && (
               <span 
-                className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded"
-                style={accentColor ? { color: accentColor, backgroundColor: `${accentColor}20` } : undefined}
+                className="preserve-color ml-2 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-600 bg-red-500/10"
               >
                 Required
               </span>
@@ -843,8 +836,7 @@ function LinkPreviewRuntime({
         <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-200">
           {label}
           {block.required && (
-            <span className="ml-2 text-[10px] uppercase tracking-wider text-indigo-500 font-semibold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded"
-              style={accentColor ? { color: accentColor, backgroundColor: `${accentColor}20` } : undefined}
+            <span className="preserve-color ml-2 text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-600 bg-red-500/10"
             >Required</span>
           )}
         </label>

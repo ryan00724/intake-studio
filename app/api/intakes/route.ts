@@ -1,25 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/src/lib/supabase/server";
 import { getUser } from "@/src/lib/supabase/auth-utils";
+import { z } from "zod";
+
+const CreateIntakeSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title must be 200 characters or fewer")
+    .trim(),
+  workspace_id: z.string().uuid("Invalid workspace ID"),
+});
 
 // GET /api/intakes
-// List intakes (optionally filter by workspace_id)
-export async function GET(req: NextRequest) {
-  // No auth check for now
-  // const user = await getUser(req);
-  // if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// List intakes belonging to the authenticated user's workspaces
+export async function GET() {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
-  const workspaceId = searchParams.get("workspace_id");
-  
-  // Return all intakes if no workspace specified, or filter
-  let query = supabaseAdmin.from("intakes").select("id, title, slug, is_published, created_at, updated_at, workspace_id, draft_json, submissions(count)");
+  // Get the user's workspace IDs
+  const { data: workspaces, error: wsErr } = await supabaseAdmin
+    .from("workspaces")
+    .select("id")
+    .eq("owner_id", user.id);
 
-  if (workspaceId) {
-    query = query.eq("workspace_id", workspaceId);
+  if (wsErr) {
+    return NextResponse.json({ error: wsErr.message }, { status: 500 });
   }
 
-  const { data, error } = await query.order("updated_at", { ascending: false });
+  const wsIds = workspaces?.map((w) => w.id) || [];
+
+  if (wsIds.length === 0) {
+    // User has no workspaces yet — return empty list
+    return NextResponse.json([]);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("intakes")
+    .select("id, title, slug, is_published, created_at, updated_at, workspace_id, draft_json, submissions(count)")
+    .in("workspace_id", wsIds)
+    .order("updated_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -29,18 +49,34 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/intakes
-// Create a new intake
+// Create a new intake in the user's workspace
 export async function POST(req: NextRequest) {
-  // No auth check for now
-  // const user = await getUser(req);
-  // if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
-    const { title, workspace_id } = body;
+    const parsed = CreateIntakeSchema.safeParse(body);
 
-    if (!title || !workspace_id) {
-      return NextResponse.json({ error: "Title and workspace_id are required" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        { status: 422 }
+      );
+    }
+
+    const { title, workspace_id } = parsed.data;
+
+    // Verify the workspace belongs to this user
+    const { data: ws, error: wsErr } = await supabaseAdmin
+      .from("workspaces")
+      .select("id")
+      .eq("id", workspace_id)
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    if (wsErr || !ws) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 403 });
     }
 
     // Generate slug
@@ -48,9 +84,7 @@ export async function POST(req: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    
-    // Ensure uniqueness by appending timestamp if needed
-    // A better way is to retry or check DB, but timestamp is safe enough for MVP
+
     const slugSuffix = Math.floor(Math.random() * 10000);
     slug = `${slug}-${slugSuffix}`;
 
@@ -60,7 +94,7 @@ export async function POST(req: NextRequest) {
         title,
         workspace_id,
         slug,
-        draft_json: {}, // Empty draft initially
+        draft_json: {},
         is_published: false,
       })
       .select()
@@ -71,7 +105,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(data, { status: 201 });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

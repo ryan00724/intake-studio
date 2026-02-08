@@ -96,6 +96,8 @@ export function EditorProvider({ children, intakeId }: { children: ReactNode; in
           if (draft.sections) setSections(draft.sections);
           else setSections(INITIAL_SECTIONS);
           
+          if (draft.edges) setEdges(draft.edges);
+          
           if (draft.metadata) setMetadata(draft.metadata);
           else setMetadata(prev => ({ ...prev, title: intake.title, slug: intake.slug }));
           
@@ -383,6 +385,7 @@ export function EditorProvider({ children, intakeId }: { children: ReactNode; in
     <EditorContext.Provider
       value={{
         sections,
+        edges,
         metadata,
         selectedId,
         intakeId,

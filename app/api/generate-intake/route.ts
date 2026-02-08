@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { generateIntakeSchema } from "@/lib/schema";
+import { getUser } from "@/src/lib/supabase/auth-utils";
 
 export async function POST(req: NextRequest) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const { description, type, complexity } = await req.json();
 

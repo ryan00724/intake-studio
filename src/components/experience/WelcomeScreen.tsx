@@ -28,19 +28,19 @@ export function WelcomeScreen({
         transition={{ duration: 0.5 }}
         className="space-y-4"
       >
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-4xl font-bold tracking-tight">
           {personalizedTitle}
         </h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">
+        <p className="text-lg opacity-70 whitespace-pre-wrap leading-relaxed">
           {personalizedIntro}
         </p>
         
         <div className="flex flex-col items-center gap-2 pt-2">
-           <div className="inline-flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/50 px-3 py-1 rounded-full">
+           <div className="inline-flex items-center gap-2 text-sm opacity-60 bg-current/[0.08] px-3 py-1 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span>Takes about {estimatedTime}</span>
            </div>
-           <p className="text-xs text-zinc-400 dark:text-zinc-500">
+           <p className="text-xs opacity-50">
              You can save and come back anytime
            </p>
         </div>
@@ -51,7 +51,7 @@ export function WelcomeScreen({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, duration: 0.4 }}
         onClick={onStart}
-        className="px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out transform-gpu will-change-transform shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+        className="preserve-color px-8 py-3 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out transform-gpu will-change-transform shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
       >
         Start
       </motion.button>

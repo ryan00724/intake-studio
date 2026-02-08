@@ -63,21 +63,43 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Custom font color override – un-layered CSS beats Tailwind v4 @layer utilities */
-.font-color-override,
-.font-color-override h1,
-.font-color-override h2,
-.font-color-override h3,
-.font-color-override h4,
-.font-color-override p,
-.font-color-override label,
-.font-color-override span,
-.font-color-override blockquote,
-.font-color-override figcaption,
-.font-color-override footer,
-.font-color-override li,
-.font-color-override div:not(.preserve-color) {
+/*
+ * Force text colour inheritance inside styled intake cards.
+ * The card wrapper sets text-zinc-100 (dark) or text-zinc-900 (light),
+ * and this rule ensures child elements respect it instead of using
+ * their own Tailwind text-color / dark: utilities.
+ *
+ * Uses !important to guarantee the override against Tailwind utilities.
+ * Excluded: .preserve-color elements, buttons, links, inputs, textareas, selects.
+ */
+.intake-card h1,
+.intake-card h2,
+.intake-card h3,
+.intake-card h4,
+.intake-card p:not(.preserve-color),
+.intake-card label,
+.intake-card span:not(.preserve-color),
+.intake-card blockquote,
+.intake-card figcaption,
+.intake-card footer,
+.intake-card li,
+.intake-card legend,
+.intake-card div:not(.preserve-color) {
+  color: inherit !important;
+}
+
+/* Placeholder text inherits with reduced opacity */
+.intake-card input::placeholder,
+.intake-card textarea::placeholder {
   color: inherit;
+  opacity: 0.4;
+}
+
+/* Inputs/textareas keep their own text color for readability */
+.intake-card input,
+.intake-card textarea,
+.intake-card select {
+  color: revert-layer;
 }
 
 /* Animated gradient background shift */

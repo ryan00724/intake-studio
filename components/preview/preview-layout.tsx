@@ -9,7 +9,7 @@ import { useSearchParams } from "next/navigation";
 type PreviewMode = "guided" | "document";
 
 export function PreviewLayout() {
-  const { togglePreview, sections, metadata } = useEditor();
+  const { togglePreview, sections, metadata, edges } = useEditor();
   const [mode, setMode] = useState<PreviewMode>(metadata.mode || "guided");
   
   const searchParams = useSearchParams();
@@ -60,6 +60,7 @@ export function PreviewLayout() {
       <main className="flex-1 overflow-y-auto relative h-full">
         <ExperienceRenderer
             sections={sections}
+            edges={edges}
             mode={mode}
             personalization={personalization}
             title={metadata.title}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUser } from "@/src/lib/supabase/auth-utils";
 
 /**
  * GET /api/link-preview?url=...
@@ -12,6 +13,8 @@ import { NextRequest, NextResponse } from "next/server";
  * Docs: https://screenshotone.com/docs/getting-started/
  */
 export async function GET(req: NextRequest) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = req.nextUrl.searchParams.get("url");
 
   if (!url) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/src/lib/supabase/server";
+import { getUser } from "@/src/lib/supabase/auth-utils";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB (increased for video)
 
@@ -24,6 +25,9 @@ const ALLOWED_MIME_TYPES = [
 const BUCKET = "intake-assets";
 
 export async function POST(req: NextRequest) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -47,11 +51,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate unique filename
+    // Generate unique filename scoped to the user
     const ext = file.name.split(".").pop() || "bin";
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 10);
-    const filePath = `${folder}/${timestamp}-${random}.${ext}`;
+    const filePath = `${folder}/${user.id}/${timestamp}-${random}.${ext}`;
 
     // Convert File to ArrayBuffer for Supabase upload
     const arrayBuffer = await file.arrayBuffer();

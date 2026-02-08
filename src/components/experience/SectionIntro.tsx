@@ -27,12 +27,12 @@ export function SectionIntro({
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="space-y-4 w-full"
       >
-        <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">Section Intro</span>
-        <h2 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <span className="text-xs font-semibold uppercase tracking-widest opacity-50">Section Intro</span>
+        <h2 className="text-3xl font-semibold tracking-tight">
           {personalizedTitle}
         </h2>
         {description && (
-            <p className="text-lg text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed max-w-lg mx-auto">
+            <p className="text-lg opacity-70 whitespace-pre-wrap leading-relaxed max-w-lg mx-auto">
             {personalizedDesc}
             </p>
         )}
@@ -43,7 +43,7 @@ export function SectionIntro({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.4 }}
         onClick={onContinue}
-        className="px-8 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+        className="preserve-color px-8 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-full font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
       >
         Continue
       </motion.button>
