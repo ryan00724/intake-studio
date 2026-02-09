@@ -13,10 +13,24 @@ function LoginForm() {
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   // Check if user is already authenticated
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || url.includes("placeholder")) {
+      setDebugInfo(`Supabase URL not configured (got: ${url?.substring(0, 30) || "undefined"})`);
+      setChecking(false);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      if (sessionError) {
+        setDebugInfo(`Session check error: ${sessionError.message}`);
+        setChecking(false);
+        return;
+      }
       if (session) {
         const redirect = searchParams.get("redirect") || "/dashboard";
         router.replace(redirect);
@@ -51,7 +65,9 @@ function LoginForm() {
         router.push(redirect);
       }
     } catch (err: any) {
-      setError(err.message);
+      const msg = err?.message || "Unknown error";
+      const status = err?.status || err?.statusCode || "";
+      setError(`${msg}${status ? ` (status: ${status})` : ""}`);
     } finally {
       setLoading(false);
     }
@@ -96,7 +112,8 @@ function LoginForm() {
             />
           </div>
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+          {error && <div className="text-red-500 text-sm bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-200 dark:border-red-800">{error}</div>}
+          {debugInfo && <div className="text-amber-600 text-xs bg-amber-50 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200 dark:border-amber-800">{debugInfo}</div>}
 
           <button
             type="submit"
