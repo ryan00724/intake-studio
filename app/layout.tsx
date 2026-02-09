@@ -13,8 +13,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Intake Studio",
-  description: "Form builder",
+  title: {
+    default: "Intake Studio",
+    template: "%s | Intake Studio",
+  },
+  description:
+    "Build beautiful, guided client intake forms. Drag-and-drop editor, branded themes, AI generation, and instant publishing.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://intakestudio.app"
+  ),
+  openGraph: {
+    siteName: "Intake Studio",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 import { ThemeProvider } from "@/src/components/theme/ThemeProvider";

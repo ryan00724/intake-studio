@@ -1,4 +1,24 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Intake Studio — Beautiful client intake forms that convert",
+  description:
+    "Create guided, multi-step intake experiences your clients will actually enjoy filling out. Drag-and-drop builder, branded themes, AI generation, and instant publishing.",
+  openGraph: {
+    title: "Intake Studio — Beautiful client intake forms that convert",
+    description:
+      "Create guided, multi-step intake experiences your clients will actually enjoy filling out.",
+    type: "website",
+    siteName: "Intake Studio",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Intake Studio — Beautiful client intake forms that convert",
+    description:
+      "Create guided, multi-step intake experiences your clients will actually enjoy filling out.",
+  },
+};
 
 export default function LandingPage() {
   return (

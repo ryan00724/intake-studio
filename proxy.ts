@@ -13,7 +13,7 @@ const PUBLIC_PREFIXES = [
 ];
 
 /** Exact paths that are public (no prefix matching needed). */
-const PUBLIC_EXACT = ["/"];
+const PUBLIC_EXACT = ["/", "/opengraph-image", "/twitter-image"];
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_EXACT.includes(pathname)) return true;
