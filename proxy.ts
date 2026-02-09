@@ -7,9 +7,12 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 const PUBLIC_PREFIXES = [
   "/login",
-  "/i/",          // Published intakes (public viewer)
-  "/api/public/", // Public API routes (submissions, etc.)
-  "/api/og",      // Open Graph image generation
+  "/forgot-password",
+  "/reset-password",
+  "/auth/",           // Auth callback (email verify, password reset)
+  "/i/",              // Published intakes (public viewer)
+  "/api/public/",     // Public API routes (submissions, etc.)
+  "/api/og",          // Open Graph image generation
 ];
 
 /** Exact paths that are public (no prefix matching needed). */

@@ -416,6 +416,13 @@ function DashboardInner() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   // Open AI modal if ?ai=true in URL
   useEffect(() => {
     if (searchParams.get("ai") === "true") {
@@ -506,28 +513,40 @@ function DashboardInner() {
   };
 
   const deleteIntake = async (id: string, title: string) => {
-    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    try {
-      const res = await fetch(`/api/intakes/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setIntakes((prev) => prev.filter((i) => i.id !== id));
-        setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-      }
-    } catch (e) { console.error("Delete failed", e); }
+    setConfirmDialog({
+      title: "Delete intake",
+      message: `Delete "${title}"? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          const res = await fetch(`/api/intakes/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            setIntakes((prev) => prev.filter((i) => i.id !== id));
+            setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          }
+        } catch (e) { console.error("Delete failed", e); }
+      },
+    });
   };
 
   const bulkDelete = async () => {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
-    if (!confirm(`Delete ${count} intake${count !== 1 ? "s" : ""}? This cannot be undone.`)) return;
-    setBulkDeleting(true);
-    try {
-      const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => fetch(`/api/intakes/${id}`, { method: "DELETE" })));
-      setIntakes((prev) => prev.filter((i) => !ids.includes(i.id)));
-      setSelectedIds(new Set());
-    } catch (e) { console.error("Bulk delete failed", e); }
-    finally { setBulkDeleting(false); }
+    setConfirmDialog({
+      title: "Delete intakes",
+      message: `Delete ${count} intake${count !== 1 ? "s" : ""}? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setBulkDeleting(true);
+        try {
+          const ids = Array.from(selectedIds);
+          await Promise.all(ids.map((id) => fetch(`/api/intakes/${id}`, { method: "DELETE" })));
+          setIntakes((prev) => prev.filter((i) => !ids.includes(i.id)));
+          setSelectedIds(new Set());
+        } catch (e) { console.error("Bulk delete failed", e); }
+        finally { setBulkDeleting(false); }
+      },
+    });
   };
 
   const toggleSelect = (id: string) => {
@@ -739,6 +758,40 @@ function DashboardInner() {
           onClose={() => setAiModalOpen(false)}
           ensureWorkspace={ensureWorkspace}
         />
+      )}
+
+      {/* ── Confirmation Dialog ─────────────────────────────────── */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmDialog(null)}>
+          <div
+            className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl max-w-sm w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 dark:text-red-400">
+                  <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{confirmDialog.title}</h3>
+            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 ml-[52px]">{confirmDialog.message}</p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
