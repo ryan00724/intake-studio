@@ -1,2 +1,15 @@
-// Re-use the same OG image generation for Twitter cards
-export { default, runtime, alt, size, contentType } from "./opengraph-image";
+import { generateIntakeOGImage } from "./og-shared";
+
+export const runtime = "edge";
+export const alt = "Intake Form";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+export default async function TwitterImage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  return generateIntakeOGImage(slug);
+}
